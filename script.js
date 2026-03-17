@@ -21,179 +21,119 @@ function toggleTheme() {
     }
 }
 
-// Функция создания XML
-function createBpmnXml(diagramData) {
-    const cleanId = (id) => id.replace(/[^a-zA-Z0-9]/g, '_');
+// Функция для конвертации ответа AI в PlantUML
+function convertToPlantUML(diagramData) {
+    let plantUML = '@startuml\n';
+    plantUML += 'skinparam sequenceArrowThickness 2\n';
+    plantUML += 'skinparam roundcorner 10\n';
+    plantUML += 'skinparam sequenceParticipantPadding 20\n';
+    plantUML += 'skinparam sequenceMessageAlign center\n\n';
     
-    let xml = `<?xml version="1.0" encoding="UTF-8"?>
-<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
-             xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
-             xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
-             xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
-             id="Definitions_1"
-             targetNamespace="http://bpmn.io/schema/bpmn">
-    <process id="Process_1" isExecutable="false">`;
-
-    const nodeMap = new Map();
-    diagramData.nodes.forEach((node, index) => {
-        const nodeId = `Node_${index}`;
-        nodeMap.set(node.id, nodeId);
-        
-        if (node.type === 'startEvent' || node.type === 'start') {
-            xml += `
-        <startEvent id="${nodeId}" name="${node.label || 'Начало'}">`;
-            diagramData.edges.forEach((edge, i) => {
-                if (edge.from === node.id) {
-                    xml += `
-            <outgoing>Flow_${i}</outgoing>`;
-                }
-            });
-            xml += `
-        </startEvent>`;
-        }
-        else if (node.type === 'endEvent' || node.type === 'end') {
-            xml += `
-        <endEvent id="${nodeId}" name="${node.label || 'Конец'}">`;
-            diagramData.edges.forEach((edge, i) => {
-                if (edge.to === node.id) {
-                    xml += `
-            <incoming>Flow_${i}</incoming>`;
-                }
-            });
-            xml += `
-        </endEvent>`;
-        }
-        else if (node.type === 'task' || node.type === 'action') {
-            xml += `
-        <task id="${nodeId}" name="${node.label || 'Задача'}">`;
-            diagramData.edges.forEach((edge, i) => {
-                if (edge.to === node.id) {
-                    xml += `
-            <incoming>Flow_${i}</incoming>`;
-                }
-                if (edge.from === node.id) {
-                    xml += `
-            <outgoing>Flow_${i}</outgoing>`;
-                }
-            });
-            xml += `
-        </task>`;
-        }
-        else if (node.type === 'exclusiveGateway' || node.type === 'decision') {
-            xml += `
-        <exclusiveGateway id="${nodeId}" name="${node.label || '?'}">`;
-            diagramData.edges.forEach((edge, i) => {
-                if (edge.to === node.id) {
-                    xml += `
-            <incoming>Flow_${i}</incoming>`;
-                }
-                if (edge.from === node.id) {
-                    xml += `
-            <outgoing>Flow_${i}</outgoing>`;
-                }
-            });
-            xml += `
-        </exclusiveGateway>`;
-        }
+    // Собираем всех участников
+    const actors = new Set();
+    diagramData.nodes.forEach(node => {
+        if (node.actor) actors.add(node.actor);
+        if (node.type === 'actor') actors.add(node.label);
     });
-
-    diagramData.edges.forEach((edge, index) => {
-        const fromId = nodeMap.get(edge.from) || `Node_${diagramData.nodes.findIndex(n => n.id === edge.from)}`;
-        const toId = nodeMap.get(edge.to) || `Node_${diagramData.nodes.findIndex(n => n.id === edge.to)}`;
-        xml += `
-        <sequenceFlow id="Flow_${index}" name="${edge.label || ''}" sourceRef="${fromId}" targetRef="${toId}" />`;
-    });
-
-    xml += `
-    </process>
     
-    <bpmndi:BPMNDiagram id="BPMNDiagram_1">
-        <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Process_1">`;
-
-    let x = 150, y = 150;
-    diagramData.nodes.forEach((node, index) => {
-        const nodeId = `Node_${index}`;
-        let width = 100, height = 80;
-        if (node.type.includes('gateway') || node.type === 'decision') {
-            width = 50; height = 50;
-        } else if (node.type.includes('Event')) {
-            width = 36; height = 36;
-        }
-        xml += `
-            <bpmndi:BPMNShape id="${nodeId}_di" bpmnElement="${nodeId}">
-                <dc:Bounds x="${x}" y="${y}" width="${width}" height="${height}" />
-            </bpmndi:BPMNShape>`;
-        x += 200;
-        if (x > 800) { x = 150; y += 150; }
+    // Добавляем участников
+    actors.forEach(actor => {
+        plantUML += `actor "${actor}" as ${actor.replace(/\s+/g, '')}\n`;
     });
-
-    diagramData.edges.forEach((edge, index) => {
-        xml += `
-            <bpmndi:BPMNEdge id="Flow_${index}_di" bpmnElement="Flow_${index}">
-                <di:waypoint x="0" y="0" />
-                <di:waypoint x="0" y="0" />
-            </bpmndi:BPMNEdge>`;
+    
+    plantUML += '\n';
+    
+    // Добавляем сообщения
+    diagramData.edges.forEach(edge => {
+        const from = edge.from.replace(/\s+/g, '');
+        const to = edge.to.replace(/\s+/g, '');
+        const label = edge.label || 'запрос';
+        plantUML += `${from} -> ${to} : ${label}\n`;
     });
-
-    xml += `
-        </bpmndi:BPMNPlane>
-    </bpmndi:BPMNDiagram>
-</definitions>`;
-
-    return xml;
+    
+    plantUML += '@enduml';
+    return plantUML;
 }
 
-// Функция рендера
-async function renderBpmnDiagram(diagramData, containerId) {
-    const container = document.getElementById(containerId);
-    container.innerHTML = '';
+// Функция для рендеринга диаграммы через PlantUML сервер
+async function renderDiagram(plantUML) {
+    const container = document.getElementById('diagramContainer');
+    const img = document.getElementById('diagramImage');
     
-    const diagramContainer = document.createElement('div');
-    diagramContainer.id = 'bpmn-container';
-    diagramContainer.style.width = '100%';
-    diagramContainer.style.height = '500px';
-    diagramContainer.style.border = '2px solid #e5e7eb';
-    diagramContainer.style.borderRadius = '16px';
-    diagramContainer.style.background = 'white';
-    container.appendChild(diagramContainer);
+    // Кодируем для PlantUML
+    const encoder = new plantumlEncoder();
+    const encoded = encoder.encode(plantUML);
     
-    const controls = document.createElement('div');
-    controls.style.marginTop = '16px';
-    controls.style.display = 'flex';
-    controls.style.gap = '10px';
-    controls.style.justifyContent = 'flex-end';
-    controls.innerHTML = `
-        <button onclick="window.zoomFit()" style="padding:8px 16px;background:#f3f4f6;border:1px solid #e5e7eb;border-radius:8px;cursor:pointer">По размеру</button>
-        <button onclick="window.zoomIn()" style="padding:8px 16px;background:#f3f4f6;border:1px solid #e5e7eb;border-radius:8px;cursor:pointer">+</button>
-        <button onclick="window.zoomOut()" style="padding:8px 16px;background:#f3f4f6;border:1px solid #e5e7eb;border-radius:8px;cursor:pointer">-</button>
-    `;
-    container.appendChild(controls);
+    // Формируем URL для PNG
+    const pngUrl = `https://www.plantuml.com/plantuml/png/${encoded}`;
+    const svgUrl = `https://www.plantuml.com/plantuml/svg/${encoded}`;
     
-    const xml = createBpmnXml(diagramData);
+    // Загружаем PNG
+    img.src = pngUrl;
     
-    if (window.viewer) {
-        try { window.viewer.destroy(); } catch(e) {}
-    }
+    // Сохраняем URL для скачивания
+    window.currentDiagramUrl = pngUrl;
     
-    window.viewer = new BpmnJS({
-        container: '#bpmn-container',
-        keyboard: { bindTo: document }
+    return new Promise((resolve, reject) => {
+        img.onload = () => {
+            // Инициализируем panzoom после загрузки
+            if (window.pz) {
+                window.pz.dispose();
+            }
+            
+            window.pz = panzoom(img, {
+                maxZoom: 5,
+                minZoom: 0.5,
+                bounds: true,
+                boundsPadding: 0.1
+            });
+            
+            resolve();
+        };
+        
+        img.onerror = reject;
     });
-    
-    try {
-        await window.viewer.importXML(xml);
-        const canvas = window.viewer.get('canvas');
-        
-        window.zoomFit = () => canvas.zoom('fit-viewport');
-        window.zoomIn = () => canvas.zoom(canvas.zoom() * 1.2);
-        window.zoomOut = () => canvas.zoom(canvas.zoom() * 0.8);
-        
-        setTimeout(() => canvas.zoom('fit-viewport'), 100);
-    } catch(err) {
-        diagramContainer.innerHTML = `<div style="color:red;padding:20px">Ошибка: ${err.message}</div>`;
-    }
 }
 
+// Функция для скачивания PNG
+function downloadPNG() {
+    if (!window.currentDiagramUrl) return;
+    
+    const link = document.createElement('a');
+    link.href = window.currentDiagramUrl;
+    link.download = 'uml-diagram.png';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+// Переключение вкладок
+function switchTab(tabId) {
+    document.querySelectorAll('.tab').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    document.querySelectorAll('.tab-content').forEach(content => {
+        content.classList.remove('active');
+    });
+    
+    document.querySelector(`.tab[data-tab="${tabId}"]`).classList.add('active');
+    document.getElementById(tabId).classList.add('active');
+}
+
+// Копирование кода
+function copyCode() {
+    const code = document.getElementById('plantUMLCode').textContent;
+    navigator.clipboard.writeText(code).then(() => {
+        const btn = document.querySelector('.copy-btn');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-check"></i> Скопировано!';
+        setTimeout(() => {
+            btn.innerHTML = originalText;
+        }, 2000);
+    });
+}
+
+// URL бэкенда
 const API_URL = 'https://diagram-gpt-lypo.onrender.com';
 
 document.getElementById('generateBtn').addEventListener('click', async function() {
@@ -205,23 +145,87 @@ document.getElementById('generateBtn').addEventListener('click', async function(
         return;
     }
     
-    resultDiv.innerHTML = '<div style="text-align:center;padding:40px">⏳ Генерация...</div>';
+    // Показываем загрузку
+    resultDiv.innerHTML = `
+        <div class="loading">
+            <i class="fas fa-spinner"></i>
+            <span>Нейросеть создаёт диаграмму...</span>
+        </div>
+    `;
     
     try {
         const response = await fetch(`${API_URL}/process-text`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text, diagram_type: 'bpmn' })
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ 
+                text: text,
+                diagram_type: 'uml'
+            })
         });
         
         const data = await response.json();
         
         if (data.success) {
-            await renderBpmnDiagram(data.diagram, 'result');
+            // Конвертируем в PlantUML
+            const plantUML = convertToPlantUML(data.diagram);
+            
+            // Создаём структуру результата
+            resultDiv.innerHTML = `
+                <div class="tabs">
+                    <div class="tab active" data-tab="code" onclick="switchTab('code')">
+                        <i class="fas fa-code"></i> PlantUML код
+                    </div>
+                    <div class="tab" data-tab="diagram" onclick="switchTab('diagram')">
+                        <i class="fas fa-project-diagram"></i> Диаграмма
+                    </div>
+                </div>
+                
+                <div id="code" class="tab-content active">
+                    <div class="code-panel">
+                        <div class="code-header">
+                            <span><i class="fas fa-code"></i> PlantUML код</span>
+                            <button class="copy-btn" onclick="copyCode()">
+                                <i class="fas fa-copy"></i> Копировать
+                            </button>
+                        </div>
+                        <pre id="plantUMLCode">${plantUML}</pre>
+                    </div>
+                </div>
+                
+                <div id="diagram" class="tab-content">
+                    <div class="diagram-panel">
+                        <div class="diagram-controls">
+                            <button onclick="window.pz.zoomIn()"><i class="fas fa-search-plus"></i></button>
+                            <button onclick="window.pz.zoomOut()"><i class="fas fa-search-minus"></i></button>
+                            <button onclick="window.pz.reset()"><i class="fas fa-redo"></i></button>
+                            <button onclick="window.pz.pause()"><i class="fas fa-hand-paper"></i></button>
+                            <button onclick="downloadPNG()" class="download-btn">
+                                <i class="fas fa-download"></i> PNG
+                            </button>
+                        </div>
+                        <div id="diagramContainer">
+                            <img id="diagramImage" style="display: block;">
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Рендерим диаграмму
+            await renderDiagram(plantUML);
+            
         } else {
-            resultDiv.innerHTML = `<div style="color:red;padding:20px">${data.error}</div>`;
+            resultDiv.innerHTML = `<div class="error"><i class="fas fa-exclamation-triangle"></i> ${data.error || 'Ошибка генерации'}</div>`;
         }
-    } catch(error) {
-        resultDiv.innerHTML = `<div style="color:red;padding:20px">Ошибка: ${error.message}</div>`;
+    } catch (error) {
+        resultDiv.innerHTML = `<div class="error"><i class="fas fa-exclamation-triangle"></i> Ошибка: ${error.message}</div>`;
     }
 });
+
+// Делаем функции глобальными
+window.switchTab = switchTab;
+window.copyCode = copyCode;
+window.downloadPNG = downloadPNG;
+window.toggleTheme = toggleTheme;
+window.autoResize = autoResize;
