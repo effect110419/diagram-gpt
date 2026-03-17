@@ -55,18 +55,27 @@ function convertToPlantUML(diagramData) {
     return plantUML;
 }
 
+// Функция для кодирования в PlantUML формат
+function encodePlantUML(text) {
+    // Базовая реализация кодирования для PlantUML
+    // Используем стандартный алгоритм deflate + base64
+    const utf8 = unescape(encodeURIComponent(text));
+    const compressed = pako.deflateRaw(utf8, { level: 9 });
+    return btoa(String.fromCharCode.apply(null, compressed))
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_');
+}
+
 // Функция для рендеринга диаграммы через PlantUML сервер
 async function renderDiagram(plantUML) {
     const container = document.getElementById('diagramContainer');
     const img = document.getElementById('diagramImage');
     
-    // Кодируем для PlantUML
-    const encoder = new plantumlEncoder();
-    const encoded = encoder.encode(plantUML);
+    // Простое кодирование (без библиотеки)
+    const encoded = encodePlantUML(plantUML);
     
     // Формируем URL для PNG
     const pngUrl = `https://www.plantuml.com/plantuml/png/${encoded}`;
-    const svgUrl = `https://www.plantuml.com/plantuml/svg/${encoded}`;
     
     // Загружаем PNG
     img.src = pngUrl;
@@ -81,17 +90,25 @@ async function renderDiagram(plantUML) {
                 window.pz.dispose();
             }
             
-            window.pz = panzoom(img, {
-                maxZoom: 5,
-                minZoom: 0.5,
-                bounds: true,
-                boundsPadding: 0.1
-            });
+            // Убеждаемся что panzoom доступен
+            if (typeof panzoom !== 'undefined') {
+                window.pz = panzoom(img, {
+                    maxZoom: 5,
+                    minZoom: 0.5,
+                    bounds: true,
+                    boundsPadding: 0.1
+                });
+            } else {
+                console.warn('Panzoom not loaded');
+            }
             
             resolve();
         };
         
-        img.onerror = reject;
+        img.onerror = (e) => {
+            console.error('Image load error:', e);
+            reject(new Error('Не удалось загрузить диаграмму'));
+        };
     });
 }
 
@@ -116,20 +133,34 @@ function switchTab(tabId) {
         content.classList.remove('active');
     });
     
-    document.querySelector(`.tab[data-tab="${tabId}"]`).classList.add('active');
-    document.getElementById(tabId).classList.add('active');
+    const activeTab = document.querySelector(`.tab[data-tab="${tabId}"]`);
+    if (activeTab) {
+        activeTab.classList.add('active');
+    }
+    
+    const activeContent = document.getElementById(tabId);
+    if (activeContent) {
+        activeContent.classList.add('active');
+    }
 }
 
 // Копирование кода
 function copyCode() {
-    const code = document.getElementById('plantUMLCode').textContent;
-    navigator.clipboard.writeText(code).then(() => {
+    const code = document.getElementById('plantUMLCode');
+    if (!code) return;
+    
+    navigator.clipboard.writeText(code.textContent).then(() => {
         const btn = document.querySelector('.copy-btn');
-        const originalText = btn.innerHTML;
-        btn.innerHTML = '<i class="fas fa-check"></i> Скопировано!';
-        setTimeout(() => {
-            btn.innerHTML = originalText;
-        }, 2000);
+        if (btn) {
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-check"></i> Скопировано!';
+            setTimeout(() => {
+                btn.innerHTML = originalText;
+            }, 2000);
+        }
+    }).catch(err => {
+        console.error('Copy failed:', err);
+        alert('Не удалось скопировать');
     });
 }
 
@@ -190,23 +221,23 @@ document.getElementById('generateBtn').addEventListener('click', async function(
                                 <i class="fas fa-copy"></i> Копировать
                             </button>
                         </div>
-                        <pre id="plantUMLCode">${plantUML}</pre>
+                        <pre id="plantUMLCode">${plantUML.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>
                     </div>
                 </div>
                 
                 <div id="diagram" class="tab-content">
                     <div class="diagram-panel">
                         <div class="diagram-controls">
-                            <button onclick="window.pz.zoomIn()"><i class="fas fa-search-plus"></i></button>
-                            <button onclick="window.pz.zoomOut()"><i class="fas fa-search-minus"></i></button>
-                            <button onclick="window.pz.reset()"><i class="fas fa-redo"></i></button>
-                            <button onclick="window.pz.pause()"><i class="fas fa-hand-paper"></i></button>
+                            <button onclick="if(window.pz) window.pz.zoomIn()"><i class="fas fa-search-plus"></i></button>
+                            <button onclick="if(window.pz) window.pz.zoomOut()"><i class="fas fa-search-minus"></i></button>
+                            <button onclick="if(window.pz) window.pz.reset()"><i class="fas fa-redo"></i></button>
+                            <button onclick="if(window.pz) window.pz.pause()"><i class="fas fa-hand-paper"></i></button>
                             <button onclick="downloadPNG()" class="download-btn">
                                 <i class="fas fa-download"></i> PNG
                             </button>
                         </div>
                         <div id="diagramContainer">
-                            <img id="diagramImage" style="display: block;">
+                            <img id="diagramImage" style="display: block; width: 100%; height: auto; cursor: grab;">
                         </div>
                     </div>
                 </div>
@@ -219,6 +250,7 @@ document.getElementById('generateBtn').addEventListener('click', async function(
             resultDiv.innerHTML = `<div class="error"><i class="fas fa-exclamation-triangle"></i> ${data.error || 'Ошибка генерации'}</div>`;
         }
     } catch (error) {
+        console.error('Generation error:', error);
         resultDiv.innerHTML = `<div class="error"><i class="fas fa-exclamation-triangle"></i> Ошибка: ${error.message}</div>`;
     }
 });
@@ -229,3 +261,8 @@ window.copyCode = copyCode;
 window.downloadPNG = downloadPNG;
 window.toggleTheme = toggleTheme;
 window.autoResize = autoResize;
+
+// Инициализация при загрузке
+document.addEventListener('DOMContentLoaded', function() {
+    // Дополнительная инициализация если нужно
+});
