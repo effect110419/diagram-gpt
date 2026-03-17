@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DiagramGPT</title>
+    <title>DiagramGPT — AI генератор диаграмм</title>
     
     <!-- Шрифты -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/geist@1.2.0/dist/fonts.css">
@@ -11,9 +11,9 @@
     <!-- Иконки -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     
-    <!-- BPMN визуализация -->
-    <link rel="stylesheet" href="https://unpkg.com/bpmn-js@17.11.1/dist/assets/diagram-js.css">
-    <link rel="stylesheet" href="https://unpkg.com/bpmn-js@17.11.1/dist/assets/bpmn-font/css/bpmn-embedded.css">
+    <!-- BPMN библиотеки -->
+    <script src="https://unpkg.com/bpmn-js@17.11.1/dist/bpmn-navigated-viewer.development.js"></script>
+    <script src="https://unpkg.com/bpmn-auto-layout@0.2.0/dist/bpmn-auto-layout.min.js"></script>
     
     <!-- Наш CSS -->
     <link rel="stylesheet" href="styles.css">
@@ -31,7 +31,7 @@
         </div>
         
         <p class="description">
-            Опишите процесс, архитектуру или модель данных — нейросеть превратит текст в профессиональную диаграмму
+            Опишите процесс — нейросеть создаст профессиональную BPMN-диаграмму
         </p>
         
         <div class="textarea-wrapper">
@@ -46,8 +46,8 @@
             <div class="select-wrapper">
                 <select id="diagramType">
                     <option value="bpmn">📊 BPMN (бизнес-процесс)</option>
-                    <option value="uml">🔄 UML Sequence (взаимодействие)</option>
-                    <option value="er">🗄️ ER Diagram (сущность-связь)</option>
+                    <option value="uml">🔄 UML (в разработке)</option>
+                    <option value="er">🗄️ ER (в разработке)</option>
                 </select>
             </div>
             <button id="generateBtn">
@@ -58,15 +58,15 @@
         
         <!-- Контейнер для результата -->
         <div id="result">
-            <!-- Здесь будет отображаться диаграмма -->
+            <div class="diagram-placeholder">
+                <i class="fas fa-project-diagram"></i>
+                <p>Введите текст и нажмите «Сгенерировать»</p>
+            </div>
         </div>
         
-        <small>⚡ Работает на AI · Диаграммы рисуются в реальном времени · Версия 0.3</small>
+        <small>⚡ Работает на AI · Профессиональная BPMN-нотация · Версия 1.0</small>
     </div>
 
-    <!-- Библиотеки -->
-    <script src="https://unpkg.com/bpmn-js@17.11.1/dist/bpmn-navigated-viewer.development.js"></script>
-    
     <!-- Наш JavaScript -->
     <script src="script.js"></script>
 </body>
