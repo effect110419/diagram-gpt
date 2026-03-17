@@ -3,123 +3,460 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DiagramGPT</title>
+    <title>DiagramGPT — AI генератор диаграмм</title>
+    
+    <!-- Geist шрифт от Vercel (современный, как у V0) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/geist@1.2.0/dist/fonts.css">
+    
+    <!-- Иконки (минималистичные) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
     <style>
-        body { 
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif; 
-            max-width: 800px; 
-            margin: 0 auto; 
-            padding: 20px;
-            background: #f5f5f5;
-        }
-        .container {
-            background: white;
-            border-radius: 10px;
-            padding: 30px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        h1 {
-            color: #333;
-            margin-bottom: 20px;
-        }
-        textarea { 
-            width: 100%; 
-            height: 150px; 
-            margin-bottom: 20px; 
-            padding: 15px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            font-size: 16px;
+        * {
+            margin: 0;
+            padding: 0;
             box-sizing: border-box;
         }
+
+        :root {
+            --bg: #f9fafb;
+            --surface: #ffffff;
+            --surface-hover: #f3f4f6;
+            --border: #e5e7eb;
+            --border-focus: #3b82f6;
+            --text: #1f2937;
+            --text-light: #6b7280;
+            --primary: #3b82f6;
+            --primary-hover: #2563eb;
+            --primary-soft: #dbeafe;
+            --error: #ef4444;
+            --error-bg: #fee2e2;
+            --success: #10b981;
+            --success-bg: #d1fae5;
+            --shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.02);
+            --shadow-hover: 0 20px 30px -10px rgba(0, 0, 0, 0.1);
+        }
+
+        body {
+            font-family: 'Geist', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        .container {
+            max-width: 900px;
+            width: 100%;
+            background: var(--surface);
+            border-radius: 32px;
+            box-shadow: var(--shadow);
+            padding: 40px;
+            transition: all 0.3s ease;
+            border: 1px solid var(--border);
+        }
+
+        .container:hover {
+            box-shadow: var(--shadow-hover);
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 32px;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo {
+            font-size: 32px;
+            filter: drop-shadow(0 4px 6px rgba(59, 130, 246, 0.2));
+        }
+
+        h1 {
+            font-size: 28px;
+            font-weight: 600;
+            letter-spacing: -0.02em;
+            background: linear-gradient(135deg, var(--text) 0%, var(--primary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .theme-toggle {
+            background: var(--surface-hover);
+            border: 1px solid var(--border);
+            border-radius: 40px;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: var(--text-light);
+        }
+
+        .theme-toggle:hover {
+            background: var(--border);
+            color: var(--text);
+        }
+
+        .description {
+            color: var(--text-light);
+            margin-bottom: 24px;
+            font-size: 16px;
+            font-weight: 400;
+        }
+
+        /* Авто-расширяющееся текстовое поле */
+        .textarea-wrapper {
+            position: relative;
+            margin-bottom: 24px;
+        }
+
+        textarea {
+            width: 100%;
+            padding: 16px 20px;
+            font-family: 'Geist', monospace;
+            font-size: 16px;
+            line-height: 1.6;
+            color: var(--text);
+            background: var(--surface);
+            border: 2px solid var(--border);
+            border-radius: 20px;
+            resize: none;  /* Запрещаем ручное изменение */
+            overflow: hidden;  /* Скрываем скролл */
+            transition: all 0.2s ease;
+            outline: none;
+            min-height: 120px;
+        }
+
+        textarea:hover {
+            border-color: var(--text-light);
+        }
+
+        textarea:focus {
+            border-color: var(--border-focus);
+            box-shadow: 0 0 0 4px var(--primary-soft);
+        }
+
+        textarea::placeholder {
+            color: var(--text-light);
+            opacity: 0.6;
+        }
+
         .controls {
             display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
+            gap: 12px;
+            margin-bottom: 32px;
+            flex-wrap: wrap;
         }
+
+        .select-wrapper {
+            flex: 2;
+            min-width: 250px;
+            position: relative;
+        }
+
         select {
-            flex: 1;
-            padding: 12px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
+            width: 100%;
+            padding: 14px 20px;
+            font-family: 'Geist', sans-serif;
             font-size: 16px;
-            background: white;
-        }
-        button { 
-            padding: 12px 24px; 
-            background: #0070f3; 
-            color: white; 
-            border: none; 
-            border-radius: 5px; 
+            color: var(--text);
+            background: var(--surface);
+            border: 2px solid var(--border);
+            border-radius: 16px;
             cursor: pointer;
+            outline: none;
+            transition: all 0.2s;
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 16px center;
+            background-size: 20px;
+        }
+
+        select:hover {
+            border-color: var(--text-light);
+        }
+
+        select:focus {
+            border-color: var(--border-focus);
+            box-shadow: 0 0 0 4px var(--primary-soft);
+        }
+
+        button {
+            flex: 1;
+            padding: 14px 28px;
+            font-family: 'Geist', sans-serif;
             font-size: 16px;
             font-weight: 500;
+            color: white;
+            background: var(--primary);
+            border: none;
+            border-radius: 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
             white-space: nowrap;
+            box-shadow: 0 4px 6px -2px rgba(59, 130, 246, 0.3);
         }
+
         button:hover {
-            background: #0051b3;
+            background: var(--primary-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.4);
         }
-        #result { 
-            margin-top: 30px; 
-            padding: 20px; 
-            border: 1px solid #ddd; 
-            border-radius: 5px; 
-            min-height: 200px;
-            background: white;
-            line-height: 1.6;
+
+        button:active {
+            transform: translateY(0);
         }
+
+        button i {
+            font-size: 18px;
+        }
+
+        .result-container {
+            border: 2px solid var(--border);
+            border-radius: 24px;
+            padding: 28px;
+            background: var(--surface);
+            transition: all 0.2s;
+        }
+
         .diagram-type-badge {
-            display: inline-block;
-            padding: 4px 10px;
-            background: #e0e0e0;
-            border-radius: 20px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: var(--primary-soft);
+            color: var(--primary-hover);
+            border-radius: 40px;
             font-size: 14px;
             font-weight: 500;
-            margin-bottom: 15px;
+            margin-bottom: 20px;
         }
+
+        .diagram-type-badge i {
+            font-size: 14px;
+        }
+
+        .diagram-content {
+            color: var(--text);
+        }
+
+        .diagram-content h3 {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .diagram-content h3 i {
+            color: var(--success);
+        }
+
+        .diagram-section {
+            margin-bottom: 24px;
+        }
+
+        .diagram-section p {
+            font-weight: 500;
+            margin-bottom: 12px;
+            color: var(--text-light);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .diagram-list {
+            list-style: none;
+            background: var(--bg);
+            border-radius: 16px;
+            padding: 16px;
+        }
+
+        .diagram-list li {
+            padding: 8px 12px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .diagram-list li:last-child {
+            border-bottom: none;
+        }
+
+        .diagram-list li i {
+            color: var(--primary);
+            font-size: 14px;
+            width: 20px;
+        }
+
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            padding: 40px;
+            color: var(--text-light);
+        }
+
+        .loading i {
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
         .error {
-            color: #d32f2f;
-            background: #ffebee;
-            padding: 10px;
-            border-radius: 5px;
+            color: var(--error);
+            background: var(--error-bg);
+            padding: 16px 20px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
         }
-        .success {
-            color: #2e7d32;
+
+        .error i {
+            font-size: 20px;
         }
-        ul {
-            padding-left: 20px;
-        }
-        li {
-            margin: 5px 0;
-        }
+
         small {
-            color: #666;
+            color: var(--text-light);
             display: block;
-            margin-top: 15px;
+            margin-top: 16px;
+            font-size: 14px;
+            text-align: center;
+        }
+
+        /* Тёмная тема */
+        body.dark {
+            --bg: #111827;
+            --surface: #1f2937;
+            --surface-hover: #374151;
+            --border: #374151;
+            --border-focus: #60a5fa;
+            --text: #f9fafb;
+            --text-light: #9ca3af;
+            --primary: #3b82f6;
+            --primary-hover: #60a5fa;
+            --primary-soft: #1e3a8a;
+            --shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Адаптация под мобильные */
+        @media (max-width: 640px) {
+            .container {
+                padding: 24px;
+            }
+            
+            .controls {
+                flex-direction: column;
+            }
+            
+            h1 {
+                font-size: 24px;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🤖 DiagramGPT</h1>
-        <p>Опишите процесс текстом, и я покажу диаграмму:</p>
-        
-        <textarea id="textInput" placeholder="Например: Пользователь нажимает кнопку входа, система проверяет логин и пароль, если верно - пускает в кабинет, иначе показывает ошибку"></textarea>
-        
-        <div class="controls">
-            <select id="diagramType">
-                <option value="bpmn">BPMN (бизнес-процесс)</option>
-                <option value="uml">UML (последовательность)</option>
-                <option value="er">ER (сущность-связь)</option>
-            </select>
-            <button id="generateBtn">Сгенерировать</button>
+        <div class="header">
+            <div class="header-left">
+                <span class="logo">🤖</span>
+                <h1>DiagramGPT</h1>
+            </div>
+            <div class="theme-toggle" onclick="toggleTheme()">
+                <i class="fas fa-moon"></i>
+            </div>
         </div>
         
-        <div id="result">Здесь появится диаграмма</div>
+        <p class="description">
+            Опишите процесс, архитектуру или модель данных — нейросеть превратит текст в профессиональную диаграмму
+        </p>
+        
+        <div class="textarea-wrapper">
+            <textarea 
+                id="textInput" 
+                placeholder="Например: Пользователь нажимает кнопку входа. Система проверяет логин и пароль. Если данные верны — открывается личный кабинет. Если нет — показывается ошибка."
+                oninput="autoResize(this)"
+            ></textarea>
+        </div>
+        
+        <div class="controls">
+            <div class="select-wrapper">
+                <select id="diagramType">
+                    <option value="bpmn">📊 BPMN (бизнес-процесс)</option>
+                    <option value="uml">🔄 UML Sequence (взаимодействие)</option>
+                    <option value="er">🗄️ ER Diagram (сущность-связь)</option>
+                </select>
+            </div>
+            <button id="generateBtn">
+                <i class="fas fa-magic"></i>
+                Сгенерировать
+            </button>
+        </div>
+        
+        <div class="result-container" id="result">
+            <div style="text-align: center; color: var(--text-light); padding: 40px 20px;">
+                <i class="fas fa-arrow-up" style="font-size: 24px; margin-bottom: 12px; opacity: 0.5;"></i>
+                <p>Введите текст и нажмите «Сгенерировать»</p>
+                <p style="font-size: 14px; margin-top: 8px;">Поддерживаются BPMN, UML и ER-диаграммы</p>
+            </div>
+        </div>
+        
+        <small>⚡ Работает на AI · Данные не сохраняются · Версия 0.2</small>
     </div>
 
     <script>
-        // URL твоего бэкенда на Render
+        // Функция для авто-расширения textarea
+        function autoResize(textarea) {
+            textarea.style.height = 'auto';
+            textarea.style.height = (textarea.scrollHeight) + 'px';
+        }
+
+        // Применить авто-расширение при загрузке
+        document.addEventListener('DOMContentLoaded', function() {
+            const textarea = document.getElementById('textInput');
+            autoResize(textarea);
+        });
+
+        // Тёмная тема
+        function toggleTheme() {
+            document.body.classList.toggle('dark');
+            const icon = document.querySelector('.theme-toggle i');
+            if (document.body.classList.contains('dark')) {
+                icon.className = 'fas fa-sun';
+            } else {
+                icon.className = 'fas fa-moon';
+            }
+        }
+
+        // URL бэкенда (замени на свой!)
         const API_URL = 'https://diagram-gpt-lypo.onrender.com';
         
         document.getElementById('generateBtn').addEventListener('click', async function() {
@@ -132,11 +469,15 @@
                 return;
             }
             
-            // Показываем, что началась загрузка
-            resultDiv.innerHTML = '⏳ Генерация диаграммы...';
+            // Показываем загрузку
+            resultDiv.innerHTML = `
+                <div class="loading">
+                    <i class="fas fa-spinner"></i>
+                    <span>Нейросеть рисует диаграмму...</span>
+                </div>
+            `;
             
             try {
-                // Отправляем запрос к бэкенду с выбранным типом
                 const response = await fetch(`${API_URL}/process-text`, {
                     method: 'POST',
                     headers: {
@@ -151,40 +492,64 @@
                 const data = await response.json();
                 
                 if (data.success) {
-                    // Показываем результат от бэкенда
+                    let typeIcon = {
+                        'bpmn': '📊',
+                        'uml': '🔄',
+                        'er': '🗄️'
+                    }[diagramType] || '📋';
+                    
                     let typeName = {
-                        'bpmn': 'BPMN',
-                        'uml': 'UML Sequence',
-                        'er': 'ER Diagram'
+                        'bpmn': 'BPMN (бизнес-процесс)',
+                        'uml': 'UML Sequence (взаимодействие)',
+                        'er': 'ER-диаграмма (сущность-связь)'
                     }[diagramType] || diagramType;
                     
                     const nodesList = data.diagram.nodes.map(node => 
-                        `<li>${node.label} (${node.type})</li>`
+                        `<li><i class="fas fa-circle"></i> ${node.label} <span style="color: var(--text-light); font-size: 12px;">(${node.type})</span></li>`
                     ).join('');
                     
                     const edgesList = data.diagram.edges.map(edge => 
-                        `<li>${edge.from} → ${edge.to} ${edge.label ? '[' + edge.label + ']' : ''}</li>`
+                        `<li><i class="fas fa-arrow-right"></i> ${edge.from} → ${edge.to} ${edge.label ? `<span style="color: var(--text-light);">[${edge.label}]</span>` : ''}</li>`
                     ).join('');
                     
                     resultDiv.innerHTML = `
-                        <span class="diagram-type-badge">${typeName}</span>
-                        <h3 class="success">✅ Диаграмма сгенерирована</h3>
+                        <div class="diagram-type-badge">
+                            <i class="fas fa-${diagramType === 'bpmn' ? 'chart-bar' : (diagramType === 'uml' ? 'code-branch' : 'database')}"></i>
+                            ${typeIcon} ${typeName}
+                        </div>
                         
-                        <p><strong>📌 Название:</strong> ${data.diagram.meta.title || 'Без названия'}</p>
-                        
-                        <p><strong>🔷 Узлы (${data.diagram.nodes.length}):</strong></p>
-                        <ul>${nodesList}</ul>
-                        
-                        <p><strong>🔗 Связи (${data.diagram.edges.length}):</strong></p>
-                        <ul>${edgesList}</ul>
-                        
-                        <p><small>Пока это тестовые данные от API. Настоящая генерация от нейросети будет позже.</small></p>
+                        <div class="diagram-content">
+                            <h3>
+                                <i class="fas fa-check-circle" style="color: var(--success);"></i>
+                                Диаграмма сгенерирована
+                            </h3>
+                            
+                            <div class="diagram-section">
+                                <p><i class="fas fa-tag"></i> ${data.diagram.meta.title || 'Диаграмма процесса'}</p>
+                            </div>
+                            
+                            <div class="diagram-section">
+                                <p><i class="fas fa-shapes"></i> Узлы (${data.diagram.nodes.length})</p>
+                                <ul class="diagram-list">
+                                    ${nodesList}
+                                </ul>
+                            </div>
+                            
+                            <div class="diagram-section">
+                                <p><i class="fas fa-link"></i> Связи (${data.diagram.edges.length})</p>
+                                <ul class="diagram-list">
+                                    ${edgesList}
+                                </ul>
+                            </div>
+                            
+                            <small>⚡ Тестовый режим · Настоящая генерация от AI будет позже</small>
+                        </div>
                     `;
                 } else {
-                    resultDiv.innerHTML = `<div class="error">❌ Ошибка: ${data.error || 'Неизвестная ошибка'}</div>`;
+                    resultDiv.innerHTML = `<div class="error"><i class="fas fa-exclamation-triangle"></i> ${data.error || 'Ошибка генерации'}</div>`;
                 }
             } catch (error) {
-                resultDiv.innerHTML = `<div class="error">❌ Ошибка соединения: ${error.message}. Проверь, работает ли бэкенд.</div>`;
+                resultDiv.innerHTML = `<div class="error"><i class="fas fa-exclamation-triangle"></i> Ошибка соединения: ${error.message}</div>`;
             }
         });
     </script>
