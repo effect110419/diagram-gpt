@@ -21,52 +21,44 @@ function toggleTheme() {
     }
 }
 
-// Функция для создания XML с правильной структурой BPMN
+// Функция создания XML
 function createBpmnXml(diagramData) {
-    // Очищаем ID от недопустимых символов
     const cleanId = (id) => id.replace(/[^a-zA-Z0-9]/g, '_');
     
-    // Создаем XML с правильной структурой
     let xml = `<?xml version="1.0" encoding="UTF-8"?>
 <definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
              xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
              xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
              xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
-             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
              id="Definitions_1"
              targetNamespace="http://bpmn.io/schema/bpmn">
     <process id="Process_1" isExecutable="false">`;
 
-    // Добавляем узлы
-    const nodes = {};
+    const nodeMap = new Map();
     diagramData.nodes.forEach((node, index) => {
-        const nodeId = cleanId(node.id || `Node_${index}`);
-        nodes[node.id] = nodeId;
+        const nodeId = `Node_${index}`;
+        nodeMap.set(node.id, nodeId);
         
         if (node.type === 'startEvent' || node.type === 'start') {
             xml += `
         <startEvent id="${nodeId}" name="${node.label || 'Начало'}">`;
-            // Добавляем исходящие связи
-            const outgoing = diagramData.edges
-                .filter(e => e.from === node.id)
-                .map(e => cleanId(e.id || `Flow_${diagramData.edges.indexOf(e)}`));
-            outgoing.forEach(flowId => {
-                xml += `
-            <outgoing>${flowId}</outgoing>`;
+            diagramData.edges.forEach((edge, i) => {
+                if (edge.from === node.id) {
+                    xml += `
+            <outgoing>Flow_${i}</outgoing>`;
+                }
             });
             xml += `
         </startEvent>`;
-        } 
+        }
         else if (node.type === 'endEvent' || node.type === 'end') {
             xml += `
         <endEvent id="${nodeId}" name="${node.label || 'Конец'}">`;
-            // Добавляем входящие связи
-            const incoming = diagramData.edges
-                .filter(e => e.to === node.id)
-                .map(e => cleanId(e.id || `Flow_${diagramData.edges.indexOf(e)}`));
-            incoming.forEach(flowId => {
-                xml += `
-            <incoming>${flowId}</incoming>`;
+            diagramData.edges.forEach((edge, i) => {
+                if (edge.to === node.id) {
+                    xml += `
+            <incoming>Flow_${i}</incoming>`;
+                }
             });
             xml += `
         </endEvent>`;
@@ -74,54 +66,42 @@ function createBpmnXml(diagramData) {
         else if (node.type === 'task' || node.type === 'action') {
             xml += `
         <task id="${nodeId}" name="${node.label || 'Задача'}">`;
-            // Добавляем входящие и исходящие связи
-            const incoming = diagramData.edges
-                .filter(e => e.to === node.id)
-                .map(e => cleanId(e.id || `Flow_${diagramData.edges.indexOf(e)}`));
-            const outgoing = diagramData.edges
-                .filter(e => e.from === node.id)
-                .map(e => cleanId(e.id || `Flow_${diagramData.edges.indexOf(e)}`));
-            incoming.forEach(flowId => {
-                xml += `
-            <incoming>${flowId}</incoming>`;
-            });
-            outgoing.forEach(flowId => {
-                xml += `
-            <outgoing>${flowId}</outgoing>`;
+            diagramData.edges.forEach((edge, i) => {
+                if (edge.to === node.id) {
+                    xml += `
+            <incoming>Flow_${i}</incoming>`;
+                }
+                if (edge.from === node.id) {
+                    xml += `
+            <outgoing>Flow_${i}</outgoing>`;
+                }
             });
             xml += `
         </task>`;
         }
         else if (node.type === 'exclusiveGateway' || node.type === 'decision') {
             xml += `
-        <exclusiveGateway id="${nodeId}" name="${node.label || 'Вопрос?'}">`;
-            // Добавляем входящие и исходящие связи
-            const incoming = diagramData.edges
-                .filter(e => e.to === node.id)
-                .map(e => cleanId(e.id || `Flow_${diagramData.edges.indexOf(e)}`));
-            const outgoing = diagramData.edges
-                .filter(e => e.from === node.id)
-                .map(e => cleanId(e.id || `Flow_${diagramData.edges.indexOf(e)}`));
-            incoming.forEach(flowId => {
-                xml += `
-            <incoming>${flowId}</incoming>`;
-            });
-            outgoing.forEach(flowId => {
-                xml += `
-            <outgoing>${flowId}</outgoing>`;
+        <exclusiveGateway id="${nodeId}" name="${node.label || '?'}">`;
+            diagramData.edges.forEach((edge, i) => {
+                if (edge.to === node.id) {
+                    xml += `
+            <incoming>Flow_${i}</incoming>`;
+                }
+                if (edge.from === node.id) {
+                    xml += `
+            <outgoing>Flow_${i}</outgoing>`;
+                }
             });
             xml += `
         </exclusiveGateway>`;
         }
     });
 
-    // Добавляем связи
     diagramData.edges.forEach((edge, index) => {
-        const flowId = cleanId(edge.id || `Flow_${index}`);
-        const sourceRef = nodes[edge.from] || cleanId(edge.from);
-        const targetRef = nodes[edge.to] || cleanId(edge.to);
+        const fromId = nodeMap.get(edge.from) || `Node_${diagramData.nodes.findIndex(n => n.id === edge.from)}`;
+        const toId = nodeMap.get(edge.to) || `Node_${diagramData.nodes.findIndex(n => n.id === edge.to)}`;
         xml += `
-        <sequenceFlow id="${flowId}" name="${edge.label || ''}" sourceRef="${sourceRef}" targetRef="${targetRef}" />`;
+        <sequenceFlow id="Flow_${index}" name="${edge.label || ''}" sourceRef="${fromId}" targetRef="${toId}" />`;
     });
 
     xml += `
@@ -130,11 +110,9 @@ function createBpmnXml(diagramData) {
     <bpmndi:BPMNDiagram id="BPMNDiagram_1">
         <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Process_1">`;
 
-    // Добавляем позиции (минимальные, авто-раскладка их пересчитает)
-    let x = 100;
-    let y = 100;
+    let x = 150, y = 150;
     diagramData.nodes.forEach((node, index) => {
-        const nodeId = nodes[node.id];
+        const nodeId = `Node_${index}`;
         let width = 100, height = 80;
         if (node.type.includes('gateway') || node.type === 'decision') {
             width = 50; height = 50;
@@ -145,15 +123,13 @@ function createBpmnXml(diagramData) {
             <bpmndi:BPMNShape id="${nodeId}_di" bpmnElement="${nodeId}">
                 <dc:Bounds x="${x}" y="${y}" width="${width}" height="${height}" />
             </bpmndi:BPMNShape>`;
-        x += 150;
-        if (x > 600) { x = 100; y += 120; }
+        x += 200;
+        if (x > 800) { x = 150; y += 150; }
     });
 
-    // Добавляем позиции для связей
     diagramData.edges.forEach((edge, index) => {
-        const flowId = cleanId(edge.id || `Flow_${index}`);
         xml += `
-            <bpmndi:BPMNEdge id="${flowId}_di" bpmnElement="${flowId}">
+            <bpmndi:BPMNEdge id="Flow_${index}_di" bpmnElement="Flow_${index}">
                 <di:waypoint x="0" y="0" />
                 <di:waypoint x="0" y="0" />
             </bpmndi:BPMNEdge>`;
@@ -167,113 +143,61 @@ function createBpmnXml(diagramData) {
     return xml;
 }
 
-// Функция для применения авто-раскладки
-async function applyAutoLayout(xml) {
-    return new Promise((resolve, reject) => {
-        try {
-            // Используем глобальную библиотеку bpmn-auto-layout
-            if (window.bpmnAutoLayout) {
-                const layoutedXml = window.bpmnAutoLayout.layout(xml);
-                resolve(layoutedXml);
-            } else {
-                console.warn('Auto-layout library not loaded, using manual layout');
-                resolve(xml);
-            }
-        } catch (error) {
-            console.warn('Auto-layout failed:', error);
-            resolve(xml);
-        }
-    });
-}
-
-// Функция для отображения BPMN диаграммы
+// Функция рендера
 async function renderBpmnDiagram(diagramData, containerId) {
     const container = document.getElementById(containerId);
-    
-    // Очищаем контейнер
     container.innerHTML = '';
     
-    // Создаём контейнер для диаграммы
     const diagramContainer = document.createElement('div');
     diagramContainer.id = 'bpmn-container';
-    diagramContainer.className = 'diagram-container';
+    diagramContainer.style.width = '100%';
+    diagramContainer.style.height = '500px';
+    diagramContainer.style.border = '2px solid #e5e7eb';
+    diagramContainer.style.borderRadius = '16px';
+    diagramContainer.style.background = 'white';
     container.appendChild(diagramContainer);
     
-    // Добавляем кнопки управления
     const controls = document.createElement('div');
-    controls.className = 'diagram-controls';
+    controls.style.marginTop = '16px';
+    controls.style.display = 'flex';
+    controls.style.gap = '10px';
+    controls.style.justifyContent = 'flex-end';
     controls.innerHTML = `
-        <button onclick="window.zoomFit()"><i class="fas fa-expand"></i> По размеру</button>
-        <button onclick="window.zoomIn()"><i class="fas fa-search-plus"></i> +</button>
-        <button onclick="window.zoomOut()"><i class="fas fa-search-minus"></i> -</button>
-        <button onclick="window.zoomReset()"><i class="fas fa-redo"></i> 100%</button>
-        <button onclick="window.downloadDiagram()"><i class="fas fa-download"></i> Скачать XML</button>
+        <button onclick="window.zoomFit()" style="padding:8px 16px;background:#f3f4f6;border:1px solid #e5e7eb;border-radius:8px;cursor:pointer">По размеру</button>
+        <button onclick="window.zoomIn()" style="padding:8px 16px;background:#f3f4f6;border:1px solid #e5e7eb;border-radius:8px;cursor:pointer">+</button>
+        <button onclick="window.zoomOut()" style="padding:8px 16px;background:#f3f4f6;border:1px solid #e5e7eb;border-radius:8px;cursor:pointer">-</button>
     `;
     container.appendChild(controls);
     
-    // Создаём XML
-    const bpmnXml = createBpmnXml(diagramData);
-    console.log('Original XML:', bpmnXml);
+    const xml = createBpmnXml(diagramData);
     
-    // Применяем авто-раскладку
-    const layoutedXml = await applyAutoLayout(bpmnXml);
-    console.log('Layouted XML:', layoutedXml);
-    
-    // Удаляем старый viewer
     if (window.viewer) {
-        try { window.viewer.destroy(); } catch (e) {}
+        try { window.viewer.destroy(); } catch(e) {}
     }
     
-    // Создаём новый navigated viewer (поддерживает перетаскивание)
     window.viewer = new BpmnJS({
         container: '#bpmn-container',
-        keyboard: {
-            bindTo: document
-        }
+        keyboard: { bindTo: document }
     });
     
     try {
-        // Импортируем XML
-        const { warnings } = await window.viewer.importXML(layoutedXml);
-        console.log('BPMN diagram rendered', warnings);
-        
-        // Получаем canvas
+        await window.viewer.importXML(xml);
         const canvas = window.viewer.get('canvas');
         
-        // Функции масштабирования
         window.zoomFit = () => canvas.zoom('fit-viewport');
         window.zoomIn = () => canvas.zoom(canvas.zoom() * 1.2);
         window.zoomOut = () => canvas.zoom(canvas.zoom() * 0.8);
-        window.zoomReset = () => canvas.zoom(1);
         
-        window.downloadDiagram = () => {
-            window.viewer.saveXML({ format: true }, (err, xml) => {
-                if (!err) {
-                    const blob = new Blob([xml], { type: 'application/xml' });
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = 'diagram.bpmn';
-                    a.click();
-                }
-            });
-        };
-        
-        // Автоматически подгоняем
         setTimeout(() => canvas.zoom('fit-viewport'), 100);
-        
-    } catch (err) {
-        console.error('Rendering failed:', err);
-        diagramContainer.innerHTML = `<div class="error">Ошибка: ${err.message}</div>`;
+    } catch(err) {
+        diagramContainer.innerHTML = `<div style="color:red;padding:20px">Ошибка: ${err.message}</div>`;
     }
 }
 
-// URL бэкенда
 const API_URL = 'https://diagram-gpt-lypo.onrender.com';
 
 document.getElementById('generateBtn').addEventListener('click', async function() {
     const text = document.getElementById('textInput').value;
-    const diagramType = document.getElementById('diagramType').value;
     const resultDiv = document.getElementById('result');
     
     if (!text.trim()) {
@@ -281,18 +205,7 @@ document.getElementById('generateBtn').addEventListener('click', async function(
         return;
     }
     
-    if (diagramType !== 'bpmn') {
-        resultDiv.innerHTML = '<div class="error">UML и ER диаграммы пока в разработке</div>';
-        return;
-    }
-    
-    // Показываем загрузку
-    resultDiv.innerHTML = `
-        <div class="loading">
-            <i class="fas fa-spinner"></i>
-            <span>Нейросеть создаёт диаграмму...</span>
-        </div>
-    `;
+    resultDiv.innerHTML = '<div style="text-align:center;padding:40px">⏳ Генерация...</div>';
     
     try {
         const response = await fetch(`${API_URL}/process-text`, {
@@ -306,9 +219,9 @@ document.getElementById('generateBtn').addEventListener('click', async function(
         if (data.success) {
             await renderBpmnDiagram(data.diagram, 'result');
         } else {
-            resultDiv.innerHTML = `<div class="error">${data.error || 'Ошибка генерации'}</div>`;
+            resultDiv.innerHTML = `<div style="color:red;padding:20px">${data.error}</div>`;
         }
-    } catch (error) {
-        resultDiv.innerHTML = `<div class="error">Ошибка соединения: ${error.message}</div>`;
+    } catch(error) {
+        resultDiv.innerHTML = `<div style="color:red;padding:20px">Ошибка: ${error.message}</div>`;
     }
 });
