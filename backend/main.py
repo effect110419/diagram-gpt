@@ -1,3 +1,8 @@
+import sys
+import os
+# Добавляем текущую папку в путь поиска модулей
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
