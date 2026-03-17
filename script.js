@@ -269,7 +269,7 @@ function renderJsonDiagram(diagramData, diagramType, containerId) {
 }
 
 // URL бэкенда
-const API_URL = 'https://diagram-gpt-backend.onrender.com';
+const API_URL = 'https://diagram-gpt-lypo.onrender.com';
 
 document.getElementById('generateBtn').addEventListener('click', async function() {
     const text = document.getElementById('textInput').value;
