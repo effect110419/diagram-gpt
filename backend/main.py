@@ -1,14 +1,14 @@
 import sys
 import os
-# Добавляем текущую папку в путь поиска модулей
+# Добавляем путь к текущей папке (backend), чтобы Python мог найти модуль 'services'
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Literal
-import os
 
+# Теперь этот импорт должен работать
 from services.openrouter_service import OpenRouterService
 
 app = FastAPI(title="DiagramGPT API", docs_url="/docs")
@@ -22,6 +22,7 @@ app.add_middleware(
 )
 
 # Создаем сервис один раз при старте приложения
+# Важно: ключ API будет прочитан из переменной окружения OPENROUTER_API_KEY
 openrouter_service = OpenRouterService()
 
 class TextRequest(BaseModel):
@@ -38,7 +39,7 @@ async def health():
 
 @app.post("/process-text")
 async def process_text(request: TextRequest):
-    # Проверяем, есть ли ключ API
+    # Проверяем, есть ли ключ API (на всякий случай)
     if not os.getenv("OPENROUTER_API_KEY"):
         return {
             "success": False, 
