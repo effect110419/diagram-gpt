@@ -33,31 +33,34 @@ function convertToBpmnXml(diagramData) {
                    id="Definitions_1">
   <bpmn:process id="Process_1" isExecutable="false">`;
     
-    // Добавляем узлы (startEvent, tasks, gateway, endEvent)
+    // Добавляем узлы
     diagramData.nodes.forEach(node => {
+        const nodeId = node.id.replace(/[^a-zA-Z0-9]/g, '_');
         if (node.type === 'startEvent' || node.type === 'start') {
             xml += `
-    <bpmn:startEvent id="${node.id}" name="${node.label}" />`;
+    <bpmn:startEvent id="${nodeId}" name="${node.label}" />`;
         } else if (node.type === 'endEvent' || node.type === 'end') {
             xml += `
-    <bpmn:endEvent id="${node.id}" name="${node.label}" />`;
+    <bpmn:endEvent id="${nodeId}" name="${node.label}" />`;
         } else if (node.type === 'task' || node.type === 'action') {
             xml += `
-    <bpmn:task id="${node.id}" name="${node.label}" />`;
+    <bpmn:task id="${nodeId}" name="${node.label}" />`;
         } else if (node.type === 'exclusiveGateway' || node.type === 'decision') {
             xml += `
-    <bpmn:exclusiveGateway id="${node.id}" name="${node.label}" />`;
+    <bpmn:exclusiveGateway id="${nodeId}" name="${node.label}" />`;
         } else if (node.type === 'parallelGateway') {
             xml += `
-    <bpmn:parallelGateway id="${node.id}" name="${node.label}" />`;
+    <bpmn:parallelGateway id="${nodeId}" name="${node.label}" />`;
         }
     });
     
-    // Добавляем связи (sequenceFlow)
+    // Добавляем связи
     diagramData.edges.forEach((edge, index) => {
         const flowId = `Flow_${index + 1}`;
+        const sourceRef = edge.from.replace(/[^a-zA-Z0-9]/g, '_');
+        const targetRef = edge.to.replace(/[^a-zA-Z0-9]/g, '_');
         xml += `
-    <bpmn:sequenceFlow id="${flowId}" sourceRef="${edge.from}" targetRef="${edge.to}" name="${edge.label || ''}" />`;
+    <bpmn:sequenceFlow id="${flowId}" sourceRef="${sourceRef}" targetRef="${targetRef}" name="${edge.label || ''}" />`;
     });
     
     xml += `
@@ -66,15 +69,26 @@ function convertToBpmnXml(diagramData) {
   <bpmndi:BPMNDiagram id="BPMNDiagram_1">
     <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Process_1">`;
     
-    // Добавляем позиции для узлов (простые координаты)
-    let x = 100;
-    let y = 100;
+    // Рассчитываем позиции для красивой раскладки
+    const nodeWidth = 100;
+    const nodeHeight = 80;
+    const startX = 100;
+    const startY = 100;
+    const xStep = 180;
+    const yStep = 120;
+    
+    // Группируем узлы по типу для красивой раскладки
+    let row = 0;
+    let col = 0;
+    
     diagramData.nodes.forEach((node, index) => {
-        // Разные размеры для разных типов элементов
-        let width = 100;
-        let height = 80;
+        const nodeId = node.id.replace(/[^a-zA-Z0-9]/g, '_');
         
-        if (node.type.includes('gateway')) {
+        // Определяем размеры для разных типов
+        let width = nodeWidth;
+        let height = nodeHeight;
+        
+        if (node.type.includes('gateway') || node.type === 'decision') {
             width = 50;
             height = 50;
         } else if (node.type.includes('Event')) {
@@ -82,20 +96,27 @@ function convertToBpmnXml(diagramData) {
             height = 36;
         }
         
+        // Рассчитываем позицию (простая сетка)
+        const x = startX + (col * xStep);
+        const y = startY + (row * yStep);
+        
         xml += `
-      <bpmndi:BPMNShape id="Shape_${node.id}" bpmnElement="${node.id}">
+      <bpmndi:BPMNShape id="Shape_${nodeId}" bpmnElement="${nodeId}">
         <dc:Bounds x="${x}" y="${y}" width="${width}" height="${height}" />
       </bpmndi:BPMNShape>`;
         
-        x += 150;
-        if (x > 700) {
-            x = 100;
-            y += 120;
+        col++;
+        if (col > 3) {
+            col = 0;
+            row++;
         }
     });
     
-    // Добавляем позиции для связей (упрощённо)
+    // Добавляем позиции для связей
     diagramData.edges.forEach((edge, index) => {
+        const sourceId = edge.from.replace(/[^a-zA-Z0-9]/g, '_');
+        const targetId = edge.to.replace(/[^a-zA-Z0-9]/g, '_');
+        
         xml += `
       <bpmndi:BPMNEdge id="Edge_${index + 1}" bpmnElement="Flow_${index + 1}">
         <di:waypoint x="150" y="140" />
@@ -128,10 +149,10 @@ async function renderBpmnDiagram(diagramData, containerId) {
     const controls = document.createElement('div');
     controls.className = 'diagram-controls';
     controls.innerHTML = `
-        <button onclick="window.fitDiagram()"><i class="fas fa-expand"></i> По размеру</button>
+        <button onclick="window.zoomFit()"><i class="fas fa-expand"></i> По размеру</button>
         <button onclick="window.zoomIn()"><i class="fas fa-search-plus"></i> +</button>
         <button onclick="window.zoomOut()"><i class="fas fa-search-minus"></i> -</button>
-        <button onclick="window.resetZoom()"><i class="fas fa-redo"></i> Сброс</button>
+        <button onclick="window.zoomReset()"><i class="fas fa-redo"></i> 100%</button>
     `;
     container.appendChild(controls);
     
@@ -144,47 +165,61 @@ async function renderBpmnDiagram(diagramData, containerId) {
         return;
     }
     
-    // Создаём BPMN viewer
-    const viewer = new BpmnJS({
-        container: '#bpmn-container'
+    // Удаляем старый viewer, если есть
+    if (window.viewer) {
+        try {
+            window.viewer.destroy();
+        } catch (e) {
+            console.log('Old viewer destroyed');
+        }
+    }
+    
+    // Создаём новый BPMN viewer с правильными настройками
+    window.viewer = new BpmnJS({
+        container: '#bpmn-container',
+        width: '100%',
+        height: '100%'
     });
     
     try {
-        await viewer.importXML(bpmnXml);
-        console.log('BPMN diagram rendered successfully');
+        // Импортируем XML
+        const { warnings } = await window.viewer.importXML(bpmnXml);
+        console.log('BPMN diagram rendered successfully', warnings);
         
-        // Сохраняем viewer для глобальных функций
-        window.currentViewer = viewer;
+        // Получаем доступ к canvas
+        const canvas = window.viewer.get('canvas');
         
-        // Функции масштабирования
-        window.fitDiagram = () => {
-            if (window.currentViewer) {
-                window.currentViewer.get('canvas').zoom('fit-viewport');
+        // Функции масштабирования (обновлённые)
+        window.zoomFit = () => {
+            if (window.viewer) {
+                canvas.zoom('fit-viewport');
             }
         };
         
         window.zoomIn = () => {
-            if (window.currentViewer) {
-                window.currentViewer.get('canvas').zoom(1.1);
+            if (window.viewer) {
+                const currentZoom = canvas.zoom();
+                canvas.zoom(currentZoom * 1.2);
             }
         };
         
         window.zoomOut = () => {
-            if (window.currentViewer) {
-                window.currentViewer.get('canvas').zoom(0.9);
+            if (window.viewer) {
+                const currentZoom = canvas.zoom();
+                canvas.zoom(currentZoom * 0.8);
             }
         };
         
-        window.resetZoom = () => {
-            if (window.currentViewer) {
-                window.currentViewer.get('canvas').zoom(1);
+        window.zoomReset = () => {
+            if (window.viewer) {
+                canvas.zoom(1);
             }
         };
         
         // Автоматически подгоняем под размер
         setTimeout(() => {
-            if (window.currentViewer) {
-                window.currentViewer.get('canvas').zoom('fit-viewport');
+            if (window.viewer) {
+                canvas.zoom('fit-viewport');
             }
         }, 100);
         
@@ -194,7 +229,7 @@ async function renderBpmnDiagram(diagramData, containerId) {
     }
 }
 
-// Функция для отображения UML/ER (пока просто JSON)
+// Функция для отображения UML/ER
 function renderJsonDiagram(diagramData, diagramType, containerId) {
     const container = document.getElementById(containerId);
     
