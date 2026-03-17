@@ -46,6 +46,10 @@ body {
     border: 1px solid var(--border);
 }
 
+.container:hover {
+    box-shadow: var(--shadow-hover);
+}
+
 .header {
     display: flex;
     align-items: center;
@@ -249,6 +253,7 @@ pre {
     padding: 0;
     position: relative;
     overflow: hidden;
+    min-height: 500px;
 }
 
 .diagram-controls {
@@ -302,6 +307,9 @@ pre {
     overflow: hidden;
     position: relative;
     background: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 #diagramImage {
