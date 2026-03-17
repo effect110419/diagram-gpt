@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-app = FastAPI()
+app = FastAPI(title="DiagramGPT API", docs_url="/docs")
 
 # Разрешаем запросы с любых доменов (чтобы фронтенд мог обращаться)
 app.add_middleware(
