@@ -38,7 +38,8 @@ function convertToPlantUML(diagramData) {
     
     // Добавляем участников
     actors.forEach(actor => {
-        plantUML += `actor "${actor}" as ${actor.replace(/\s+/g, '')}\n`;
+        const actorId = actor.replace(/\s+/g, '');
+        plantUML += `actor "${actor}" as ${actorId}\n`;
     });
     
     plantUML += '\n';
@@ -57,13 +58,20 @@ function convertToPlantUML(diagramData) {
 
 // Функция для кодирования в PlantUML формат
 function encodePlantUML(text) {
-    // Базовая реализация кодирования для PlantUML
-    // Используем стандартный алгоритм deflate + base64
+    // 1. Сначала кодируем в UTF-8
     const utf8 = unescape(encodeURIComponent(text));
+    
+    // 2. Сжимаем deflate
     const compressed = pako.deflateRaw(utf8, { level: 9 });
-    return btoa(String.fromCharCode.apply(null, compressed))
+    
+    // 3. Конвертируем в base64
+    const base64 = btoa(String.fromCharCode.apply(null, compressed));
+    
+    // 4. Заменяем символы для PlantUML
+    return base64
         .replace(/\+/g, '-')
-        .replace(/\//g, '_');
+        .replace(/\//g, '_')
+        .replace(/=/g, '');
 }
 
 // Функция для рендеринга диаграммы через PlantUML сервер
@@ -71,11 +79,15 @@ async function renderDiagram(plantUML) {
     const container = document.getElementById('diagramContainer');
     const img = document.getElementById('diagramImage');
     
-    // Простое кодирование (без библиотеки)
+    if (!container || !img) return;
+    
+    // Кодируем
     const encoded = encodePlantUML(plantUML);
     
-    // Формируем URL для PNG
-    const pngUrl = `https://www.plantuml.com/plantuml/png/~1${encoded}`;
+    // URL для PlantUML сервера
+    const pngUrl = `https://www.plantuml.com/plantuml/png/${encoded}`;
+    
+    console.log('PlantUML URL:', pngUrl);
     
     // Загружаем PNG
     img.src = pngUrl;
@@ -85,12 +97,12 @@ async function renderDiagram(plantUML) {
     
     return new Promise((resolve, reject) => {
         img.onload = () => {
-            // Инициализируем panzoom после загрузки
+            // Удаляем старый panzoom
             if (window.pz) {
                 window.pz.dispose();
             }
             
-            // Убеждаемся что panzoom доступен
+            // Инициализируем panzoom
             if (typeof panzoom !== 'undefined') {
                 window.pz = panzoom(img, {
                     maxZoom: 5,
@@ -98,8 +110,6 @@ async function renderDiagram(plantUML) {
                     bounds: true,
                     boundsPadding: 0.1
                 });
-            } else {
-                console.warn('Panzoom not loaded');
             }
             
             resolve();
@@ -134,14 +144,10 @@ function switchTab(tabId) {
     });
     
     const activeTab = document.querySelector(`.tab[data-tab="${tabId}"]`);
-    if (activeTab) {
-        activeTab.classList.add('active');
-    }
+    if (activeTab) activeTab.classList.add('active');
     
     const activeContent = document.getElementById(tabId);
-    if (activeContent) {
-        activeContent.classList.add('active');
-    }
+    if (activeContent) activeContent.classList.add('active');
 }
 
 // Копирование кода
@@ -202,6 +208,11 @@ document.getElementById('generateBtn').addEventListener('click', async function(
             // Конвертируем в PlantUML
             const plantUML = convertToPlantUML(data.diagram);
             
+            // Экранируем для безопасного отображения в HTML
+            const escapedPlantUML = plantUML
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;');
+            
             // Создаём структуру результата
             resultDiv.innerHTML = `
                 <div class="tabs">
@@ -221,7 +232,7 @@ document.getElementById('generateBtn').addEventListener('click', async function(
                                 <i class="fas fa-copy"></i> Копировать
                             </button>
                         </div>
-                        <pre id="plantUMLCode">${plantUML.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>
+                        <pre id="plantUMLCode">${escapedPlantUML}</pre>
                     </div>
                 </div>
                 
@@ -261,8 +272,3 @@ window.copyCode = copyCode;
 window.downloadPNG = downloadPNG;
 window.toggleTheme = toggleTheme;
 window.autoResize = autoResize;
-
-// Инициализация при загрузке
-document.addEventListener('DOMContentLoaded', function() {
-    // Дополнительная инициализация если нужно
-});
