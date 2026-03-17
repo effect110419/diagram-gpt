@@ -7,7 +7,7 @@ class OpenRouterService:
     def __init__(self):
         self.api_key = os.getenv("OPENROUTER_API_KEY")
         self.base_url = "https://openrouter.ai/api/v1"
-        self.model = "openai/gpt-3.5-turbo"  # или можно использовать бесплатные модели
+        self.model = "meta-ai/llama-3-8b-instruct"
         
     async def generate_diagram(self, prompt: str, diagram_type: str) -> Dict[str, Any]:
         """
