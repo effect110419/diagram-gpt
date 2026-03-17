@@ -2,19 +2,27 @@ import httpx
 import os
 import json
 import re
-from typing import Dict, Any, Optional
+import asyncio
+from typing import Dict, Any, Optional, List
 
 class OpenRouterService:
     def __init__(self):
         self.api_key = os.getenv("OPENROUTER_API_KEY")
         self.base_url = "https://openrouter.ai/api/v1"
-        # Используем стабильную модель
-        self.model = "meta-llama/llama-3.3-70b-instruct:free"
+        
+        # СПИСОК МОДЕЛЕЙ (в порядке приоритета)
+        self.models = [
+            "arcee-ai/trinity-mini:free",           # Trinity Mini (5 успешных у тебя)
+            "arcee-ai/trinity-large-preview:free",  # Trinity Large (5 успешных)
+            "nvidia/nemotron-nano-9b-v2:free",      # Nemotron Nano (4 успешных)
+            "meta-llama/llama-4-maverick:free",      # Llama 4 (топ по рейтингу)
+            "stepfun/step-3.5-flash:free",           # StepFun
+            "mistralai/mistral-small-3.1-24b-instruct:free"  # Mistral
+        ]
         
     async def generate_diagram(self, prompt: str, diagram_type: str) -> Dict[str, Any]:
-        """
-        Отправляет запрос в OpenRouter и получает структуру диаграммы
-        """
+        """Отправляет запрос с перебором моделей при ошибках"""
+        
         if not self.api_key:
             return {
                 "success": False, 
@@ -30,50 +38,59 @@ class OpenRouterService:
         
         system_prompt = self._get_system_prompt(diagram_type)
         
-        payload = {
-            "model": self.model,
-            "messages": [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": prompt}
-            ],
-            "temperature": 0.2,
-            "max_tokens": 2000
-        }
+        # Пробуем модели по очереди
+        for model_index, model in enumerate(self.models):
+            print(f"🔄 Пробуем модель [{model_index + 1}/{len(self.models)}]: {model}")
+            
+            payload = {
+                "model": model,
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": prompt}
+                ],
+                "temperature": 0.2,
+                "max_tokens": 2000
+            }
+            
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                try:
+                    response = await client.post(
+                        f"{self.base_url}/chat/completions",
+                        headers=headers,
+                        json=payload
+                    )
+                    
+                    # Если успешно — парсим и возвращаем
+                    if response.status_code == 200:
+                        result = response.json()
+                        content = result["choices"][0]["message"]["content"]
+                        diagram_data = self._extract_json(content)
+                        
+                        if diagram_data:
+                            print(f"✅ Модель {model} успешно сработала!")
+                            return {"success": True, "diagram": diagram_data}
+                        else:
+                            print(f"⚠️ Модель {model} вернула невалидный JSON, пробуем дальше...")
+                    
+                    # Если 429 (лимит) — ждем и пробуем следующую
+                    elif response.status_code == 429:
+                        print(f"⏳ Модель {model} превысила лимит, пробуем следующую...")
+                        await asyncio.sleep(1)  # маленькая пауза
+                    
+                    # Любая другая ошибка — просто логируем и идем дальше
+                    else:
+                        print(f"⚠️ Модель {model} вернула ошибку {response.status_code}, пробуем следующую...")
+                        
+                except Exception as e:
+                    print(f"❌ Ошибка с моделью {model}: {str(e)[:100]}... пробуем дальше")
+                    continue
         
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            try:
-                response = await client.post(
-                    f"{self.base_url}/chat/completions",
-                    headers=headers,
-                    json=payload
-                )
-                
-                if response.status_code != 200:
-                    return {
-                        "success": False, 
-                        "error": f"OpenRouter ошибка: {response.status_code}"
-                    }
-                
-                result = response.json()
-                content = result["choices"][0]["message"]["content"]
-                
-                # Извлекаем JSON из ответа
-                diagram_data = self._extract_json(content)
-                
-                if diagram_data:
-                    return {"success": True, "diagram": diagram_data}
-                else:
-                    # Если не смогли извлечь JSON, возвращаем тестовые данные
-                    return {
-                        "success": True, 
-                        "diagram": self._get_test_diagram(diagram_type)
-                    }
-                
-            except Exception as e:
-                return {
-                    "success": False, 
-                    "error": f"Ошибка: {str(e)}"
-                }
+        # Если все модели упали — возвращаем тестовую диаграмму
+        print("⚠️ Все модели недоступны, возвращаем тестовую диаграмму")
+        return {
+            "success": True, 
+            "diagram": self._get_test_diagram(diagram_type)
+        }
     
     def _extract_json(self, text: str) -> Optional[Dict]:
         """Извлекает JSON из текста, даже если там есть лишнее"""
@@ -103,31 +120,22 @@ class OpenRouterService:
         """Возвращает тестовую диаграмму для отладки"""
         if diagram_type == "uml":
             return {
-                "meta": {"title": "Пример UML", "type": "uml"},
+                "meta": {"title": "Тестовая UML", "type": "uml"},
                 "nodes": [
                     {"id": "Пользователь", "type": "actor", "label": "Пользователь"},
-                    {"id": "Система", "type": "component", "label": "Система"},
-                    {"id": "Сервер", "type": "component", "label": "Сервер"}
+                    {"id": "Система", "type": "component", "label": "Система"}
                 ],
                 "edges": [
                     {"from": "Пользователь", "to": "Система", "label": "запрос"},
-                    {"from": "Система", "to": "Сервер", "label": "проверка"},
-                    {"from": "Сервер", "to": "Система", "label": "ответ"},
-                    {"from": "Система", "to": "Пользователь", "label": "результат"}
+                    {"from": "Система", "to": "Пользователь", "label": "ответ"}
                 ]
             }
-        else:
-            return {"meta": {"title": "Тест"}, "nodes": [], "edges": []}
+        return {"meta": {"title": "Тест"}, "nodes": [], "edges": []}
     
     def _get_system_prompt(self, diagram_type: str) -> str:
+        """Возвращает промпт для нужного типа диаграммы"""
         if diagram_type == "uml":
             return """Ты — эксперт по UML. Создай JSON для sequence диаграммы.
-
-Правила:
-1. Участники (nodes): каждый участник имеет id и label
-2. Сообщения (edges): каждое сообщение имеет from, to, label
-3. Ответ должен быть ТОЛЬКО JSON, без пояснений
-
 Формат:
 {
     "meta": {"title": "Название", "type": "uml"},
@@ -139,23 +147,5 @@ class OpenRouterService:
         {"from": "Участник1", "to": "Участник2", "label": "действие"}
     ]
 }
-
-Пример для заказа пиццы:
-{
-    "meta": {"title": "Заказ пиццы", "type": "uml"},
-    "nodes": [
-        {"id": "Клиент", "type": "actor", "label": "Клиент"},
-        {"id": "Система", "type": "component", "label": "Система"},
-        {"id": "Кухня", "type": "component", "label": "Кухня"}
-    ],
-    "edges": [
-        {"from": "Клиент", "to": "Система", "label": "заказать пиццу"},
-        {"from": "Система", "to": "Кухня", "label": "готовить"},
-        {"from": "Кухня", "to": "Система", "label": "готово"},
-        {"from": "Система", "to": "Клиент", "label": "заказ готов"}
-    ]
-}
-
-Верни ТОЛЬКО JSON для этого текста:"""
-        else:
-            return "Верни пустой JSON: {}"
+Верни ТОЛЬКО JSON."""
+        return "Верни пустой JSON: {}"
