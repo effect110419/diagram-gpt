@@ -4,7 +4,7 @@ from pydantic import BaseModel
 from typing import Literal
 import os
 
-from app.services.openrouter_service import OpenRouterService
+from services.openrouter_service import OpenRouterService
 
 app = FastAPI(title="DiagramGPT API", docs_url="/docs")
 
