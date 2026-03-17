@@ -75,7 +75,7 @@ async function renderDiagram(plantUML) {
     const encoded = encodePlantUML(plantUML);
     
     // Формируем URL для PNG
-    const pngUrl = `https://www.plantuml.com/plantuml/png/${encoded}`;
+    const pngUrl = `https://www.plantuml.com/plantuml/png/~1${encoded}`;
     
     // Загружаем PNG
     img.src = pngUrl;
