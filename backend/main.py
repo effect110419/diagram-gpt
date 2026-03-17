@@ -1,10 +1,14 @@
+import sys
+import os
+# Добавляем путь к папке backend
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Literal
-import os
 
-# Правильный импорт под структуру app/services
+# Теперь импорт должен работать
 from app.services.openrouter_service import OpenRouterService
 
 app = FastAPI(title="DiagramGPT API", docs_url="/docs")
