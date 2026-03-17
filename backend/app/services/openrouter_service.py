@@ -9,7 +9,7 @@ class OpenRouterService:
         self.api_key = os.getenv("OPENROUTER_API_KEY")
         self.base_url = "https://openrouter.ai/api/v1"
         # Используем стабильную модель
-        self.model = "google/gemini-2.0-flash-exp:free"
+        self.model = "meta-llama/llama-3.3-70b-instruct:free"
         
     async def generate_diagram(self, prompt: str, diagram_type: str) -> Dict[str, Any]:
         """
