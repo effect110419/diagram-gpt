@@ -3,13 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DiagramGPT — AI генератор диаграмм</title>
+    <title>DiagramGPT</title>
     
     <!-- Шрифты -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/geist@1.2.0/dist/fonts.css">
     
     <!-- Иконки -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- BPMN визуализация -->
+    <link rel="stylesheet" href="https://unpkg.com/bpmn-js@17.11.1/dist/assets/diagram-js.css">
+    <link rel="stylesheet" href="https://unpkg.com/bpmn-js@17.11.1/dist/assets/bpmn-font/css/bpmn-embedded.css">
     
     <!-- Наш CSS -->
     <link rel="stylesheet" href="styles.css">
@@ -52,17 +56,17 @@
             </button>
         </div>
         
-        <div class="result-container" id="result">
-            <div style="text-align: center; color: var(--text-light); padding: 40px 20px;">
-                <i class="fas fa-arrow-up" style="font-size: 24px; margin-bottom: 12px; opacity: 0.5;"></i>
-                <p>Введите текст и нажмите «Сгенерировать»</p>
-                <p style="font-size: 14px; margin-top: 8px;">Поддерживаются BPMN, UML и ER-диаграммы</p>
-            </div>
+        <!-- Контейнер для результата -->
+        <div id="result">
+            <!-- Здесь будет отображаться диаграмма -->
         </div>
         
-        <small>⚡ Работает на AI · Данные не сохраняются · Версия 0.2</small>
+        <small>⚡ Работает на AI · Диаграммы рисуются в реальном времени · Версия 0.3</small>
     </div>
 
+    <!-- Библиотеки -->
+    <script src="https://unpkg.com/bpmn-js@17.11.1/dist/bpmn-viewer.development.js"></script>
+    
     <!-- Наш JavaScript -->
     <script src="script.js"></script>
 </body>
