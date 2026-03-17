@@ -32,6 +32,19 @@
             font-size: 16px;
             box-sizing: border-box;
         }
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        select {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            background: white;
+        }
         button { 
             padding: 12px 24px; 
             background: #0070f3; 
@@ -41,6 +54,7 @@
             cursor: pointer;
             font-size: 16px;
             font-weight: 500;
+            white-space: nowrap;
         }
         button:hover {
             background: #0051b3;
@@ -53,6 +67,15 @@
             min-height: 200px;
             background: white;
             line-height: 1.6;
+        }
+        .diagram-type-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            background: #e0e0e0;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 15px;
         }
         .error {
             color: #d32f2f;
@@ -83,7 +106,14 @@
         
         <textarea id="textInput" placeholder="Например: Пользователь нажимает кнопку входа, система проверяет логин и пароль, если верно - пускает в кабинет, иначе показывает ошибку"></textarea>
         
-        <button id="generateBtn">Сгенерировать</button>
+        <div class="controls">
+            <select id="diagramType">
+                <option value="bpmn">BPMN (бизнес-процесс)</option>
+                <option value="uml">UML (последовательность)</option>
+                <option value="er">ER (сущность-связь)</option>
+            </select>
+            <button id="generateBtn">Сгенерировать</button>
+        </div>
         
         <div id="result">Здесь появится диаграмма</div>
     </div>
@@ -94,6 +124,7 @@
         
         document.getElementById('generateBtn').addEventListener('click', async function() {
             const text = document.getElementById('textInput').value;
+            const diagramType = document.getElementById('diagramType').value;
             const resultDiv = document.getElementById('result');
             
             if (!text.trim()) {
@@ -105,7 +136,7 @@
             resultDiv.innerHTML = '⏳ Генерация диаграммы...';
             
             try {
-                // Отправляем запрос к бэкенду
+                // Отправляем запрос к бэкенду с выбранным типом
                 const response = await fetch(`${API_URL}/process-text`, {
                     method: 'POST',
                     headers: {
@@ -113,7 +144,7 @@
                     },
                     body: JSON.stringify({ 
                         text: text,
-                        diagram_type: 'bpmn' 
+                        diagram_type: diagramType 
                     })
                 });
                 
@@ -121,6 +152,12 @@
                 
                 if (data.success) {
                     // Показываем результат от бэкенда
+                    let typeName = {
+                        'bpmn': 'BPMN',
+                        'uml': 'UML Sequence',
+                        'er': 'ER Diagram'
+                    }[diagramType] || diagramType;
+                    
                     const nodesList = data.diagram.nodes.map(node => 
                         `<li>${node.label} (${node.type})</li>`
                     ).join('');
@@ -130,6 +167,7 @@
                     ).join('');
                     
                     resultDiv.innerHTML = `
+                        <span class="diagram-type-badge">${typeName}</span>
                         <h3 class="success">✅ Диаграмма сгенерирована</h3>
                         
                         <p><strong>📌 Название:</strong> ${data.diagram.meta.title || 'Без названия'}</p>
