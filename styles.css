@@ -339,7 +339,7 @@ small {
     text-align: center;
 }
 
-/* Стили для контейнера диаграммы */
+/* Стили для диаграммы */
 .diagram-container {
     width: 100%;
     height: 500px;
@@ -359,6 +359,8 @@ small {
     height: 100%;
     color: var(--text-light);
     background: #f9f9f9;
+    border: 2px dashed var(--border);
+    border-radius: 16px;
 }
 
 .diagram-placeholder i {
@@ -369,10 +371,11 @@ small {
 
 .diagram-controls {
     margin-top: 16px;
-    margin-bottom: 20px;
+    margin-bottom: 10px;
     display: flex;
     gap: 10px;
     justify-content: flex-end;
+    flex-wrap: wrap;
 }
 
 .diagram-controls button {
@@ -433,6 +436,6 @@ body.dark {
     }
     
     .diagram-controls {
-        flex-wrap: wrap;
+        justify-content: center;
     }
 }
