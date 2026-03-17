@@ -5,22 +5,23 @@
 }
 
 :root {
-    --bg: #f9fafb;
+    --bg: #f8fafc;
     --surface: #ffffff;
-    --surface-hover: #f3f4f6;
-    --border: #e5e7eb;
+    --surface-hover: #f1f5f9;
+    --border: #e2e8f0;
     --border-focus: #3b82f6;
-    --text: #1f2937;
-    --text-light: #6b7280;
+    --text: #0f172a;
+    --text-light: #64748b;
     --primary: #3b82f6;
     --primary-hover: #2563eb;
     --primary-soft: #dbeafe;
+    --code-bg: #1e293b;
+    --code-text: #e2e8f0;
+    --success: #10b981;
     --error: #ef4444;
     --error-bg: #fee2e2;
-    --success: #10b981;
-    --success-bg: #d1fae5;
-    --shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.02);
-    --shadow-hover: 0 20px 30px -10px rgba(0, 0, 0, 0.1);
+    --shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.01);
+    --shadow-hover: 0 25px 30px -10px rgba(0, 0, 0, 0.1);
 }
 
 body {
@@ -32,24 +33,17 @@ body {
     align-items: center;
     justify-content: center;
     padding: 20px;
-    line-height: 1.5;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
+    line-height: 1.6;
 }
 
 .container {
-    max-width: 900px;
+    max-width: 1200px;
     width: 100%;
     background: var(--surface);
     border-radius: 32px;
     box-shadow: var(--shadow);
     padding: 40px;
-    transition: all 0.3s ease;
     border: 1px solid var(--border);
-}
-
-.container:hover {
-    box-shadow: var(--shadow-hover);
 }
 
 .header {
@@ -67,7 +61,6 @@ body {
 
 .logo {
     font-size: 32px;
-    filter: drop-shadow(0 4px 6px rgba(59, 130, 246, 0.2));
 }
 
 h1 {
@@ -103,17 +96,15 @@ h1 {
     color: var(--text-light);
     margin-bottom: 24px;
     font-size: 16px;
-    font-weight: 400;
 }
 
 .textarea-wrapper {
-    position: relative;
-    margin-bottom: 24px;
+    margin-bottom: 20px;
 }
 
 textarea {
     width: 100%;
-    padding: 16px 20px;
+    padding: 20px;
     font-family: 'Geist', monospace;
     font-size: 16px;
     line-height: 1.6;
@@ -123,7 +114,7 @@ textarea {
     border-radius: 20px;
     resize: none;
     overflow: hidden;
-    transition: all 0.2s ease;
+    transition: all 0.2s;
     outline: none;
     min-height: 120px;
 }
@@ -137,56 +128,9 @@ textarea:focus {
     box-shadow: 0 0 0 4px var(--primary-soft);
 }
 
-textarea::placeholder {
-    color: var(--text-light);
-    opacity: 0.6;
-}
-
-.controls {
-    display: flex;
-    gap: 12px;
-    margin-bottom: 32px;
-    flex-wrap: wrap;
-}
-
-.select-wrapper {
-    flex: 2;
-    min-width: 250px;
-    position: relative;
-}
-
-select {
+.generate-btn {
     width: 100%;
-    padding: 14px 20px;
-    font-family: 'Geist', sans-serif;
-    font-size: 16px;
-    color: var(--text);
-    background: var(--surface);
-    border: 2px solid var(--border);
-    border-radius: 16px;
-    cursor: pointer;
-    outline: none;
-    transition: all 0.2s;
-    appearance: none;
-    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
-    background-repeat: no-repeat;
-    background-position: right 16px center;
-    background-size: 20px;
-}
-
-select:hover {
-    border-color: var(--text-light);
-}
-
-select:focus {
-    border-color: var(--border-focus);
-    box-shadow: 0 0 0 4px var(--primary-soft);
-}
-
-button {
-    flex: 1;
-    padding: 14px 28px;
-    font-family: 'Geist', sans-serif;
+    padding: 16px;
     font-size: 16px;
     font-weight: 500;
     color: white;
@@ -199,111 +143,201 @@ button {
     align-items: center;
     justify-content: center;
     gap: 10px;
-    white-space: nowrap;
-    box-shadow: 0 4px 6px -2px rgba(59, 130, 246, 0.3);
+    margin-bottom: 32px;
 }
 
-button:hover {
+.generate-btn:hover {
     background: var(--primary-hover);
     transform: translateY(-2px);
     box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.4);
 }
 
-button:active {
-    transform: translateY(0);
-}
-
-button i {
-    font-size: 18px;
-}
-
 .result-container {
     border: 2px solid var(--border);
     border-radius: 24px;
-    padding: 28px;
-    background: var(--surface);
-    transition: all 0.2s;
-    margin-top: 20px;
+    overflow: hidden;
 }
 
-.diagram-type-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 16px;
-    background: var(--primary-soft);
-    color: var(--primary-hover);
-    border-radius: 40px;
-    font-size: 14px;
+/* Вкладки */
+.tabs {
+    display: flex;
+    border-bottom: 2px solid var(--border);
+    background: var(--surface-hover);
+}
+
+.tab {
+    flex: 1;
+    padding: 16px;
+    text-align: center;
+    cursor: pointer;
     font-weight: 500;
-    margin-bottom: 20px;
+    transition: all 0.2s;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
 }
 
-.diagram-type-badge i {
+.tab.active {
+    background: var(--surface);
+    border-bottom-color: var(--primary);
+    color: var(--primary);
+}
+
+.tab i {
+    margin-right: 8px;
+}
+
+/* Содержимое вкладок */
+.tab-content {
+    display: none;
+    padding: 24px;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+/* Панель с кодом */
+.code-panel {
+    background: var(--code-bg);
+    border-radius: 16px;
+    padding: 20px;
+    position: relative;
+}
+
+.code-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    color: var(--code-text);
     font-size: 14px;
 }
 
-.diagram-content {
+.copy-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: var(--code-text);
+    padding: 8px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s;
+}
+
+.copy-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.copy-btn i {
+    margin-right: 8px;
+}
+
+pre {
+    margin: 0;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    font-family: 'Geist', monospace;
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--code-text);
+}
+
+/* Панель с диаграммой */
+.diagram-panel {
+    background: white;
+    border-radius: 16px;
+    padding: 0;
+    position: relative;
+    overflow: hidden;
+}
+
+.diagram-controls {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    z-index: 10;
+    display: flex;
+    gap: 8px;
+    background: white;
+    padding: 8px;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--border);
+}
+
+.diagram-controls button {
+    width: 36px;
+    height: 36px;
+    border: 1px solid var(--border);
+    background: white;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: var(--text-light);
+}
+
+.diagram-controls button:hover {
+    background: var(--surface-hover);
     color: var(--text);
 }
 
-.diagram-content h3 {
-    font-size: 20px;
-    font-weight: 600;
-    margin-bottom: 16px;
+.download-btn {
+    width: auto !important;
+    padding: 0 16px;
     display: flex;
     align-items: center;
     gap: 8px;
+    background: var(--primary) !important;
+    color: white !important;
+    border: none !important;
 }
 
-.diagram-content h3 i {
-    color: var(--success);
+.download-btn:hover {
+    background: var(--primary-hover) !important;
 }
 
-.diagram-section {
-    margin-bottom: 24px;
+#diagramContainer {
+    width: 100%;
+    height: 500px;
+    overflow: hidden;
+    position: relative;
+    background: white;
 }
 
-.diagram-section p {
-    font-weight: 500;
-    margin-bottom: 12px;
+#diagramImage {
+    max-width: none;
+    transform-origin: 0 0;
+    cursor: grab;
+}
+
+#diagramImage:active {
+    cursor: grabbing;
+}
+
+/* Плейсхолдер */
+.placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px;
     color: var(--text-light);
-    display: flex;
-    align-items: center;
-    gap: 8px;
+    background: var(--surface-hover);
 }
 
-.diagram-list {
-    list-style: none;
-    background: var(--bg);
-    border-radius: 16px;
-    padding: 16px;
+.placeholder i {
+    font-size: 48px;
+    margin-bottom: 16px;
+    opacity: 0.5;
 }
 
-.diagram-list li {
-    padding: 8px 12px;
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.diagram-list li:last-child {
-    border-bottom: none;
-}
-
-.diagram-list li i {
-    color: var(--primary);
-    font-size: 14px;
-    width: 20px;
-}
-
+/* Загрузка */
 .loading {
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 12px;
-    padding: 40px;
+    padding: 60px;
     color: var(--text-light);
 }
 
@@ -316,19 +350,15 @@ button i {
     to { transform: rotate(360deg); }
 }
 
+/* Ошибка */
 .error {
     color: var(--error);
     background: var(--error-bg);
-    padding: 16px 20px;
+    padding: 20px;
     border-radius: 16px;
     display: flex;
     align-items: center;
     gap: 12px;
-    margin: 20px 0;
-}
-
-.error i {
-    font-size: 20px;
 }
 
 small {
@@ -339,103 +369,60 @@ small {
     text-align: center;
 }
 
-/* Стили для диаграммы */
-.diagram-container {
-    width: 100%;
-    height: 500px;
-    border: 2px solid var(--border);
-    border-radius: 16px;
-    background: white;
-    position: relative;
-    overflow: hidden;
-    margin-top: 20px;
-}
-
-.diagram-placeholder {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
-    color: var(--text-light);
-    background: #f9f9f9;
-    border: 2px dashed var(--border);
-    border-radius: 16px;
-}
-
-.diagram-placeholder i {
-    font-size: 48px;
-    margin-bottom: 16px;
-    opacity: 0.5;
-}
-
-.diagram-controls {
-    margin-top: 16px;
-    margin-bottom: 10px;
-    display: flex;
-    gap: 10px;
-    justify-content: flex-end;
-    flex-wrap: wrap;
-}
-
-.diagram-controls button {
-    padding: 8px 16px;
-    font-size: 14px;
-    background: var(--surface-hover);
-    color: var(--text);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.2s;
-    box-shadow: none;
-    transform: none;
-    flex: 0 1 auto;
-}
-
-.diagram-controls button:hover {
-    background: var(--border);
-    transform: translateY(-1px);
-}
-
-.diagram-controls button i {
-    font-size: 14px;
-    margin-right: 5px;
-}
-
 /* Тёмная тема */
 body.dark {
-    --bg: #111827;
-    --surface: #1f2937;
-    --surface-hover: #374151;
-    --border: #374151;
+    --bg: #0f172a;
+    --surface: #1e293b;
+    --surface-hover: #334155;
+    --border: #334155;
     --border-focus: #60a5fa;
-    --text: #f9fafb;
-    --text-light: #9ca3af;
+    --text: #f1f5f9;
+    --text-light: #94a3b8;
     --primary: #3b82f6;
     --primary-hover: #60a5fa;
     --primary-soft: #1e3a8a;
-    --shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+    --code-bg: #0f172a;
 }
 
-/* Адаптация под мобильные */
+body.dark .diagram-controls,
+body.dark .diagram-controls button {
+    background: var(--surface);
+    border-color: var(--border);
+    color: var(--text-light);
+}
+
+body.dark .diagram-controls button:hover {
+    background: var(--surface-hover);
+    color: var(--text);
+}
+
+body.dark .download-btn {
+    background: var(--primary) !important;
+    color: white !important;
+}
+
+/* Адаптация */
 @media (max-width: 640px) {
     .container {
-        padding: 24px;
-    }
-    
-    .controls {
-        flex-direction: column;
+        padding: 20px;
     }
     
     h1 {
-        font-size: 24px;
+        font-size: 20px;
     }
     
-    .diagram-container {
-        height: 350px;
+    .tabs {
+        flex-direction: column;
     }
     
     .diagram-controls {
-        justify-content: center;
+        top: 10px;
+        right: 10px;
+        flex-wrap: wrap;
+        width: calc(100% - 20px);
+    }
+    
+    #diagramContainer {
+        height: 400px;
     }
 }
