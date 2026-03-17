@@ -7,8 +7,12 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Literal
+import logging
 
-# Теперь импорт должен работать
+# Настраиваем логирование
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 from app.services.openrouter_service import OpenRouterService
 
 app = FastAPI(title="DiagramGPT API", docs_url="/docs")
@@ -30,16 +34,22 @@ class TextRequest(BaseModel):
 
 @app.get("/")
 async def root():
-    return {"message": "DiagramGPT API работает с реальным AI!"}
+    logger.info("GET / called")
+    return {"message": "DiagramGPT API работает с реальным AI!", "status": "ok"}
 
 @app.get("/health")
 async def health():
-    return {"status": "ok"}
+    logger.info("GET /health called")
+    return {"status": "ok", "timestamp": "2026-03-17"}
 
 @app.post("/process-text")
 async def process_text(request: TextRequest):
+    logger.info(f"POST /process-text called with type: {request.diagram_type}")
+    logger.info(f"Text length: {len(request.text)} chars")
+    
     # Проверяем, есть ли ключ API
     if not os.getenv("OPENROUTER_API_KEY"):
+        logger.error("OPENROUTER_API_KEY not set")
         return {
             "success": False, 
             "error": "OPENROUTER_API_KEY не настроен. Добавь его в переменные окружения на Render."
@@ -51,4 +61,19 @@ async def process_text(request: TextRequest):
         request.diagram_type
     )
     
+    logger.info(f"Result success: {result.get('success', False)}")
+    if not result.get('success', False):
+        logger.error(f"Error: {result.get('error', 'Unknown error')}")
+    
     return result
+
+@app.get("/test")
+async def test():
+    """Тестовый эндпоинт для проверки API ключа"""
+    key = os.getenv("OPENROUTER_API_KEY", "не найден")
+    masked_key = key[:10] + "..." if key != "не найден" else key
+    return {
+        "key_status": "установлен" if key != "не найден" else "отсутствует",
+        "key_preview": masked_key,
+        "message": "API ключ проверен"
+    }
