@@ -66,34 +66,69 @@ async function renderDiagram(plantUML) {
     
     const encoded = encodePlantUML(plantUML);
     
-    // ТОЧНО КАК ПРОСИТ СЕРВЕР - с ~1 и БЕЗ СЛЭША
-    const url = `https://www.plantuml.com/plantuml/png/~1${encoded}`;
+    // ВСЕ ВОЗМОЖНЫЕ ВАРИАНТЫ URL
+    const variants = [
+        { url: `https://www.plantuml.com/plantuml/png/${encoded}`, name: 'без ~1' },
+        { url: `https://www.plantuml.com/plantuml/png/~1${encoded}`, name: '~1 без слэша' },
+        { url: `https://www.plantuml.com/plantuml/png/~1/${encoded}`, name: '~1 со слэшем' },
+        { url: `https://www.plantuml.com/plantuml/svg/${encoded}`, name: 'svg' },
+        { url: `https://www.plantuml.com/plantuml/svg/~1${encoded}`, name: 'svg с ~1' }
+    ];
     
-    console.log('URL:', url);
-    
-    img.src = url;
-    window.currentDiagramUrl = url;
-    
-    return new Promise((resolve, reject) => {
-        img.onload = () => {
-            console.log('✅ Диаграмма загружена!');
-            if (window.pz) window.pz.dispose();
-            if (typeof panzoom !== 'undefined') {
-                window.pz = panzoom(img, {
-                    maxZoom: 5,
-                    minZoom: 0.5,
-                    bounds: true,
-                    boundsPadding: 0.1
-                });
-            }
-            resolve();
-        };
+    for (const variant of variants) {
+        console.log(`Пробуем ${variant.name}:`, variant.url);
         
-        img.onerror = (e) => {
-            console.error('❌ Ошибка загрузки:', e);
-            reject(new Error('Не удалось загрузить диаграмму'));
-        };
-    });
+        try {
+            // Тестируем каждый вариант
+            const success = await new Promise((resolve) => {
+                const testImg = new Image();
+                let resolved = false;
+                
+                testImg.onload = () => {
+                    if (!resolved) {
+                        resolved = true;
+                        // Если ширина больше 100 - это нормальная диаграмма
+                        if (testImg.width > 100) {
+                            console.log(`✅ Успех с ${variant.name}! Ширина: ${testImg.width}`);
+                            img.src = variant.url;
+                            window.currentDiagramUrl = variant.url;
+                            
+                            if (window.pz) window.pz.dispose();
+                            if (typeof panzoom !== 'undefined') {
+                                window.pz = panzoom(img, {
+                                    maxZoom: 5,
+                                    minZoom: 0.5,
+                                    bounds: true,
+                                    boundsPadding: 0.1
+                                });
+                            }
+                            resolve(true);
+                        } else {
+                            console.log(`⚠️ ${variant.name} вернул маленькую картинку (ошибка)`);
+                            resolve(false);
+                        }
+                    }
+                };
+                
+                testImg.onerror = () => {
+                    if (!resolved) {
+                        resolved = true;
+                        console.log(`❌ ${variant.name} не загрузился`);
+                        resolve(false);
+                    }
+                };
+                
+                testImg.src = variant.url;
+            });
+            
+            if (success) return;
+            
+        } catch (e) {
+            console.log(`❌ Ошибка с ${variant.name}:`, e);
+        }
+    }
+    
+    throw new Error('Ни один вариант не сработал');
 }
 
 function downloadPNG() {
