@@ -53,18 +53,18 @@ function encodePlantUML(text) {
     // 1. UTF-8
     const utf8 = unescape(encodeURIComponent(text));
     
-    // 2. Deflate с максимальным сжатием
+    // 2. HUFFMAN сжатие (strategy: 3)
     const compressed = pako.deflateRaw(utf8, { 
         level: 9,
         windowBits: 15,
         memLevel: 9,
-        strategy: 2
+        strategy: 3
     });
     
     // 3. Конвертация в base64
     let base64 = btoa(String.fromCharCode.apply(null, new Uint8Array(compressed)));
     
-    // 4. ЗАМЕНА СИМВОЛОВ ПО АЛФАВИТУ PLANTUML
+    // 4. ЗАМЕНА СИМВОЛОВ
     base64 = base64.replace(/\+/g, '-').replace(/\//g, '_');
     
     // 5. Удаление padding
@@ -72,11 +72,6 @@ function encodePlantUML(text) {
     
     // 6. Удаляем первый символ если это слэш
     if (base64.startsWith('/')) base64 = base64.substring(1);
-    
-    // 7. Обрезаем если слишком длинное
-    if (base64.length > 4000) {
-        base64 = base64.substring(0, 4000);
-    }
     
     return base64;
 }
@@ -89,7 +84,7 @@ async function renderDiagram(plantUML) {
     
     const encoded = encodePlantUML(plantUML);
     
-    // ТОЛЬКО ОДИН ВАРИАНТ - ТОЧНО КАК ПРОСИТ ОШИБКА
+    // URL с ~1 (как просит сервер)
     const url = `https://www.plantuml.com/plantuml/png/~1${encoded}`;
     
     console.log('URL:', url);
@@ -100,13 +95,7 @@ async function renderDiagram(plantUML) {
     
     return new Promise((resolve, reject) => {
         img.onload = () => {
-            // Проверяем, что загрузилась реальная диаграмма
-            if (img.width > 100) {
-                console.log('✅ Диаграмма загружена! Ширина:', img.width);
-            } else {
-                console.log('⚠️ Пришла картинка с ошибкой, ширина:', img.width);
-            }
-            
+            console.log('✅ Диаграмма загружена! Ширина:', img.width);
             if (window.pz) window.pz.dispose();
             if (typeof panzoom !== 'undefined') {
                 window.pz = panzoom(img, {
