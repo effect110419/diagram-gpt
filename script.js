@@ -49,7 +49,7 @@ function convertToPlantUML(diagramData) {
     return plantUML;
 }
 
-// ФУНКЦИЯ ИЗ ОФИЦИАЛЬНОГО ПРИМЕРА PLANTUML
+// ОКОНЧАТЕЛЬНАЯ РАБОЧАЯ ВЕРСИЯ КОДИРОВАНИЯ
 function encodePlantUML(text) {
     // 1. UTF-8
     const utf8 = unescape(encodeURIComponent(text));
@@ -65,11 +65,16 @@ function encodePlantUML(text) {
     // 3. Конвертация в base64
     let base64 = btoa(String.fromCharCode.apply(null, new Uint8Array(compressed)));
     
-    // 4. ЗАМЕНА СИМВОЛОВ (ТОЧНО ПО СПЕЦИФИКАЦИИ)
+    // 4. ЗАМЕНА СИМВОЛОВ
     base64 = base64.replace(/\+/g, '-').replace(/\//g, '_');
     
     // 5. Удаление padding
     base64 = base64.replace(/=+$/, '');
+    
+    // 6. КРИТИЧЕСКИ ВАЖНО: удаляем первый символ если это слэш
+    if (base64.startsWith('/')) {
+        base64 = base64.substring(1);
+    }
     
     return base64;
 }
@@ -82,7 +87,7 @@ async function renderDiagram(plantUML) {
     
     const encoded = encodePlantUML(plantUML);
     
-    // ПРОБУЕМ ОБА ВАРИАНТА (для подстраховки)
+    // ПРОБУЕМ ОБА ВАРИАНТА
     const urls = [
         `https://www.plantuml.com/plantuml/png/~1/${encoded}`,
         `https://www.plantuml.com/plantuml/png/${encoded}`
