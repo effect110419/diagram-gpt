@@ -66,49 +66,34 @@ async function renderDiagram(plantUML) {
     
     const encoded = encodePlantUML(plantUML);
     
-    const variants = [
-        { url: `https://www.plantuml.com/plantuml/png/${encoded}`, name: 'без ~1' },
-        { url: `https://www.plantuml.com/plantuml/png/~1/${encoded}`, name: 'с ~1/' },
-        { url: `https://www.plantuml.com/plantuml/svg/${encoded}`, name: 'svg' }
-    ];
+    // ТОЧНО КАК ПРОСИТ СЕРВЕР - с ~1 и БЕЗ СЛЭША
+    const url = `https://www.plantuml.com/plantuml/png/~1${encoded}`;
     
-    for (const variant of variants) {
-        console.log(`Пробуем ${variant.name}:`, variant.url);
-        
-        try {
-            const response = await fetch(variant.url, { method: 'HEAD' });
-            const contentType = response.headers.get('content-type');
-            
-            if (contentType && contentType.includes('image/')) {
-                await new Promise((resolve, reject) => {
-                    img.src = variant.url;
-                    window.currentDiagramUrl = variant.url;
-                    
-                    img.onload = () => {
-                        console.log(`✅ Успех с ${variant.name}!`);
-                        if (window.pz) window.pz.dispose();
-                        if (typeof panzoom !== 'undefined') {
-                            window.pz = panzoom(img, {
-                                maxZoom: 5,
-                                minZoom: 0.5,
-                                bounds: true,
-                                boundsPadding: 0.1
-                            });
-                        }
-                        resolve();
-                    };
-                    
-                    img.onerror = reject;
+    console.log('URL:', url);
+    
+    img.src = url;
+    window.currentDiagramUrl = url;
+    
+    return new Promise((resolve, reject) => {
+        img.onload = () => {
+            console.log('✅ Диаграмма загружена!');
+            if (window.pz) window.pz.dispose();
+            if (typeof panzoom !== 'undefined') {
+                window.pz = panzoom(img, {
+                    maxZoom: 5,
+                    minZoom: 0.5,
+                    bounds: true,
+                    boundsPadding: 0.1
                 });
-                
-                return;
             }
-        } catch (e) {
-            console.log(`❌ Ошибка с ${variant.name}:`, e);
-        }
-    }
-    
-    throw new Error('Ни один вариант не сработал');
+            resolve();
+        };
+        
+        img.onerror = (e) => {
+            console.error('❌ Ошибка загрузки:', e);
+            reject(new Error('Не удалось загрузить диаграмму'));
+        };
+    });
 }
 
 function downloadPNG() {
