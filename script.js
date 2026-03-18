@@ -50,11 +50,34 @@ function convertToPlantUML(diagramData) {
 }
 
 function encodePlantUML(text) {
+    // 1. UTF-8
     const utf8 = unescape(encodeURIComponent(text));
-    const compressed = pako.deflateRaw(utf8, { level: 9 });
+    
+    // 2. Deflate с МАКСИМАЛЬНЫМ сжатием
+    const compressed = pako.deflateRaw(utf8, { 
+        level: 9,
+        windowBits: 15,
+        memLevel: 9,
+        strategy: 2
+    });
+    
+    // 3. Конвертация в base64
     let base64 = btoa(String.fromCharCode.apply(null, new Uint8Array(compressed)));
-    base64 = base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    
+    // 4. ЗАМЕНА СИМВОЛОВ
+    base64 = base64.replace(/\+/g, '-').replace(/\//g, '_');
+    
+    // 5. Удаление padding
+    base64 = base64.replace(/=+$/, '');
+    
+    // 6. Удаляем первый символ если это слэш
     if (base64.startsWith('/')) base64 = base64.substring(1);
+    
+    // 7. Обрезаем если слишком длинное
+    if (base64.length > 4000) {
+        base64 = base64.substring(0, 4000);
+    }
+    
     return base64;
 }
 
@@ -66,69 +89,35 @@ async function renderDiagram(plantUML) {
     
     const encoded = encodePlantUML(plantUML);
     
-    // ВСЕ ВОЗМОЖНЫЕ ВАРИАНТЫ URL
-    const variants = [
-        { url: `https://www.plantuml.com/plantuml/png/${encoded}`, name: 'без ~1' },
-        { url: `https://www.plantuml.com/plantuml/png/~1${encoded}`, name: '~1 без слэша' },
-        { url: `https://www.plantuml.com/plantuml/png/~1/${encoded}`, name: '~1 со слэшем' },
-        { url: `https://www.plantuml.com/plantuml/svg/${encoded}`, name: 'svg' },
-        { url: `https://www.plantuml.com/plantuml/svg/~1${encoded}`, name: 'svg с ~1' }
-    ];
+    // ТОЛЬКО ОДИН ВАРИАНТ - САМЫЙ НАДЁЖНЫЙ
+    const url = `https://www.plantuml.com/plantuml/png/~1${encoded}`;
     
-    for (const variant of variants) {
-        console.log(`Пробуем ${variant.name}:`, variant.url);
+    console.log('URL:', url);
+    console.log('Длина URL:', url.length);
+    
+    img.src = url;
+    window.currentDiagramUrl = url;
+    
+    return new Promise((resolve, reject) => {
+        img.onload = () => {
+            console.log('✅ Диаграмма загружена!');
+            if (window.pz) window.pz.dispose();
+            if (typeof panzoom !== 'undefined') {
+                window.pz = panzoom(img, {
+                    maxZoom: 5,
+                    minZoom: 0.5,
+                    bounds: true,
+                    boundsPadding: 0.1
+                });
+            }
+            resolve();
+        };
         
-        try {
-            // Тестируем каждый вариант
-            const success = await new Promise((resolve) => {
-                const testImg = new Image();
-                let resolved = false;
-                
-                testImg.onload = () => {
-                    if (!resolved) {
-                        resolved = true;
-                        // Если ширина больше 100 - это нормальная диаграмма
-                        if (testImg.width > 100) {
-                            console.log(`✅ Успех с ${variant.name}! Ширина: ${testImg.width}`);
-                            img.src = variant.url;
-                            window.currentDiagramUrl = variant.url;
-                            
-                            if (window.pz) window.pz.dispose();
-                            if (typeof panzoom !== 'undefined') {
-                                window.pz = panzoom(img, {
-                                    maxZoom: 5,
-                                    minZoom: 0.5,
-                                    bounds: true,
-                                    boundsPadding: 0.1
-                                });
-                            }
-                            resolve(true);
-                        } else {
-                            console.log(`⚠️ ${variant.name} вернул маленькую картинку (ошибка)`);
-                            resolve(false);
-                        }
-                    }
-                };
-                
-                testImg.onerror = () => {
-                    if (!resolved) {
-                        resolved = true;
-                        console.log(`❌ ${variant.name} не загрузился`);
-                        resolve(false);
-                    }
-                };
-                
-                testImg.src = variant.url;
-            });
-            
-            if (success) return;
-            
-        } catch (e) {
-            console.log(`❌ Ошибка с ${variant.name}:`, e);
-        }
-    }
-    
-    throw new Error('Ни один вариант не сработал');
+        img.onerror = (e) => {
+            console.error('❌ Ошибка загрузки:', e);
+            reject(new Error('Не удалось загрузить диаграмму'));
+        };
+    });
 }
 
 function downloadPNG() {
