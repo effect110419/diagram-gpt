@@ -49,43 +49,29 @@ function convertToPlantUML(diagramData) {
     return plantUML;
 }
 
-// 👇🏻 ИСПРАВЛЕННАЯ ФУНКЦИЯ КОДИРОВАНИЯ
+// ФУНКЦИЯ ИЗ ОФИЦИАЛЬНОГО ПРИМЕРА PLANTUML
 function encodePlantUML(text) {
     // 1. UTF-8
     const utf8 = unescape(encodeURIComponent(text));
     
-    // 2. Deflate сжатие
-    const compressed = pako.deflateRaw(utf8, { level: 9 });
+    // 2. Deflate с фиксированными параметрами
+    const compressed = pako.deflateRaw(utf8, { 
+        level: 9,
+        windowBits: 15,
+        memLevel: 9,
+        strategy: 0
+    });
     
-    // 3. Бинарная строка
-    let binary = '';
-    const bytes = new Uint8Array(compressed);
-    for (let i = 0; i < bytes.byteLength; i++) {
-        binary += String.fromCharCode(bytes[i]);
-    }
+    // 3. Конвертация в base64
+    let base64 = btoa(String.fromCharCode.apply(null, new Uint8Array(compressed)));
     
-    // 4. Стандартный base64
-    let base64 = btoa(binary);
+    // 4. ЗАМЕНА СИМВОЛОВ (ТОЧНО ПО СПЕЦИФИКАЦИИ)
+    base64 = base64.replace(/\+/g, '-').replace(/\//g, '_');
     
-    // 5. Алфавиты для замены
-    const standardAlphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
-    const plantumlAlphabet = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-_';
+    // 5. Удаление padding
+    base64 = base64.replace(/=+$/, '');
     
-    // 6. Замена символов
-    let result = '';
-    for (let i = 0; i < base64.length; i++) {
-        const char = base64[i];
-        if (char === '=') continue; // пропускаем padding
-        
-        const index = standardAlphabet.indexOf(char);
-        if (index >= 0) {
-            result += plantumlAlphabet[index];
-        } else {
-            result += char;
-        }
-    }
-    
-    return result;
+    return base64;
 }
 
 async function renderDiagram(plantUML) {
@@ -96,19 +82,26 @@ async function renderDiagram(plantUML) {
     
     const encoded = encodePlantUML(plantUML);
     
-    // ПРОБУЕМ ОБА ВАРИАНТА
-    const urlWithTilde = `https://www.plantuml.com/plantuml/png/~1${encoded}`;
-    const urlWithoutTilde = `https://www.plantuml.com/plantuml/png/${encoded}`;
+    // ПРОБУЕМ ОБА ВАРИАНТА (для подстраховки)
+    const urls = [
+        `https://www.plantuml.com/plantuml/png/~1/${encoded}`,
+        `https://www.plantuml.com/plantuml/png/${encoded}`
+    ];
     
-    console.log('🔍 Encoded:', encoded);
-    console.log('🔍 URL with ~1:', urlWithTilde);
-    
-    img.src = urlWithTilde;
-    window.currentDiagramUrl = urlWithTilde;
-    
-    return new Promise((resolve, reject) => {
-        img.onload = () => {
-            console.log('✅ Работает с ~1');
+    for (const url of urls) {
+        console.log('Пробуем URL:', url);
+        
+        try {
+            await new Promise((resolve, reject) => {
+                img.src = url;
+                window.currentDiagramUrl = url;
+                
+                img.onload = resolve;
+                img.onerror = reject;
+            });
+            
+            console.log('✅ Успех с URL:', url);
+            
             if (window.pz) window.pz.dispose();
             if (typeof panzoom !== 'undefined') {
                 window.pz = panzoom(img, {
@@ -118,34 +111,14 @@ async function renderDiagram(plantUML) {
                     boundsPadding: 0.1
                 });
             }
-            resolve();
-        };
-        
-        img.onerror = () => {
-            console.log('❌ С ~1 не работает, пробуем без ~1');
-            img.src = urlWithoutTilde;
-            window.currentDiagramUrl = urlWithoutTilde;
             
-            img.onload = () => {
-                console.log('✅ Работает без ~1');
-                if (window.pz) window.pz.dispose();
-                if (typeof panzoom !== 'undefined') {
-                    window.pz = panzoom(img, {
-                        maxZoom: 5,
-                        minZoom: 0.5,
-                        bounds: true,
-                        boundsPadding: 0.1
-                    });
-                }
-                resolve();
-            };
-            
-            img.onerror = (e) => {
-                console.error('❌❌ Оба варианта не работают', e);
-                reject(new Error('Не удалось загрузить диаграмму'));
-            };
-        };
-    });
+            return;
+        } catch (e) {
+            console.log('❌ Не сработал URL:', url);
+        }
+    }
+    
+    throw new Error('Ни один URL не сработал');
 }
 
 function downloadPNG() {
