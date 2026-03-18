@@ -56,29 +56,45 @@ function translateToRussian(text) {
         'Auth Service': 'Сервис авторизации',
         'Queue': 'Очередь',
         'Kafka': 'Кафка',
-        'RabbitMQ': 'Кролик',
-        'Redis': 'Редис',
+        'RabbitMQ': 'RabbitMQ',
+        'Redis': 'Redis',
         'Cache': 'Кэш',
         'Load Balancer': 'Балансировщик',
         'CDN': 'CDN',
         'DNS': 'DNS',
+        'Inventory System': 'Складская система',
+        'PaymentGateway': 'Платежный шлюз',
+        'EmailService': 'Почтовый сервис',
+        'InventorySystem': 'Складская система',
         
-        // Действия
+        // Глаголы и действия
+        'Adds product to basket': 'Добавляет товар в корзину',
         'Add to cart': 'Добавить в корзину',
+        'Checks product availability': 'Проверяет наличие товара',
         'Check availability': 'Проверить наличие',
-        'Availability response': 'Ответ о наличии',
-        'Reserve item': 'Зарезервировать товар',
+        'Confirms product available': 'Подтверждает наличие товара',
+        'Confirm availability': 'Подтвердить наличие',
+        'Reserves product': 'Резервирует товар',
+        'Reserve product': 'Зарезервировать товар',
+        'Sends payment request': 'Отправляет запрос оплаты',
         'Send payment request': 'Отправить запрос оплаты',
-        'Check card': 'Проверить карту',
-        'Payment confirmation': 'Подтверждение оплаты',
-        'Payment success': 'Оплата успешна',
-        'Send order confirmation': 'Отправить подтверждение заказа',
-        'Send confirmation email': 'Отправить письмо',
-        'Process payment': 'Обработать платеж',
-        'Verify card': 'Верифицировать карту',
+        'Verifies card': 'Проверяет карту',
+        'Verify card': 'Проверить карту',
+        'Confirms payment': 'Подтверждает оплату',
         'Confirm payment': 'Подтвердить оплату',
+        'Payment confirmed': 'Оплата подтверждена',
+        'Sends order confirmation': 'Отправляет подтверждение заказа',
+        'Send order confirmation': 'Отправить подтверждение заказа',
+        'Sends email confirmation': 'Отправляет подтверждение по email',
+        'Send confirmation email': 'Отправить подтверждение',
+        'Process payment': 'Обработать платеж',
+        'Payment success': 'Оплата успешна',
         'Payment successful': 'Оплата успешна',
         'Order confirmation': 'Подтверждение заказа',
+        'Availability response': 'Ответ о наличии',
+        'Reserve item': 'Зарезервировать товар',
+        'Check card': 'Проверить карту',
+        'Payment confirmation': 'Подтверждение оплаты',
         
         // HTTP методы
         'GET request': 'GET запрос',
@@ -87,14 +103,38 @@ function translateToRussian(text) {
         'DELETE request': 'DELETE запрос',
         'PATCH request': 'PATCH запрос',
         
-        // Ответы
+        // HTTP ответы
         '200 OK': '200 Успешно',
         '201 Created': '201 Создано',
         '400 Bad Request': '400 Неверный запрос',
         '401 Unauthorized': '401 Не авторизован',
         '403 Forbidden': '403 Доступ запрещен',
         '404 Not Found': '404 Не найдено',
-        '500 Internal Error': '500 Ошибка сервера'
+        '500 Internal Error': '500 Ошибка сервера',
+        
+        // Общие фразы
+        'Request': 'Запрос',
+        'Response': 'Ответ',
+        'Success': 'Успешно',
+        'Error': 'Ошибка',
+        'Processing': 'Обработка',
+        'Complete': 'Завершено',
+        'Failed': 'Ошибка',
+        'Timeout': 'Таймаут',
+        'Retry': 'Повтор',
+        'Cancel': 'Отмена',
+        'Confirm': 'Подтвердить',
+        'Reject': 'Отклонить',
+        'Approve': 'Одобрить',
+        'Decline': 'Отказать',
+        'Payment': 'Оплата',
+        'Order': 'Заказ',
+        'Product': 'Товар',
+        'Basket': 'Корзина',
+        'Cart': 'Корзина',
+        'Availability': 'Наличие',
+        'Stock': 'Склад',
+        'Inventory': 'Склад'
     };
     
     // Проверяем точное совпадение
@@ -102,7 +142,14 @@ function translateToRussian(text) {
         return translations[text];
     }
     
-    // Если нет в словаре, оставляем как есть
+    // Если нет точного совпадения, пробуем частичное
+    for (let [en, ru] of Object.entries(translations)) {
+        if (text.toLowerCase().includes(en.toLowerCase())) {
+            return text.replace(new RegExp(en, 'i'), ru);
+        }
+    }
+    
+    // Если ничего не нашли, оставляем как есть
     return text;
 }
 
@@ -144,7 +191,6 @@ function generatePlantUML(diagramData, originalText) {
     // Собираем всех участников
     const participants = new Set();
     
-    // Сначала собираем оригинальные названия
     diagramData.nodes?.forEach(node => {
         if (node.actor) participants.add(node.actor);
         if (node.label && !node.actor) participants.add(node.label);
@@ -162,8 +208,12 @@ function generatePlantUML(diagramData, originalText) {
     Array.from(participants).forEach((participant, index) => {
         // Переводим название на русский для отображения
         const russianName = translateToRussian(participant);
-        // Делаем транслит для идентификатора
-        const latinId = transliterateToLatin(russianName);
+        
+        // Делаем транслит для идентификатора и убираем пробелы
+        const latinId = transliterateToLatin(russianName)
+            .replace(/\s+/g, '')
+            .replace(/[^a-zA-Z0-9]/g, '');
+        
         const color = colors[index % colors.length];
         
         plantUML += `participant "${russianName}" as ${latinId} order ${index + 1}\n`;
@@ -183,11 +233,15 @@ function generatePlantUML(diagramData, originalText) {
             const fromRussian = translateToRussian(edge.from);
             const toRussian = translateToRussian(edge.to);
             
-            // Делаем транслит для идентификаторов
-            const fromLatin = transliterateToLatin(fromRussian);
-            const toLatin = transliterateToLatin(toRussian);
+            // Делаем транслит для идентификаторов и убираем пробелы
+            const fromLatin = transliterateToLatin(fromRussian)
+                .replace(/\s+/g, '')
+                .replace(/[^a-zA-Z0-9]/g, '');
+            const toLatin = transliterateToLatin(toRussian)
+                .replace(/\s+/g, '')
+                .replace(/[^a-zA-Z0-9]/g, '');
             
-            // Переводим текст сообщения
+            // Переводим текст сообщения на русский
             let label = translateToRussian(edge.label || 'запрос');
             const lowerLabel = label.toLowerCase();
             
@@ -200,6 +254,13 @@ function generatePlantUML(diagramData, originalText) {
                 }
             }
             
+            // Проверка на else
+            if (analysis.hasElse && (lowerLabel.includes('иначе') || lowerLabel.includes('else'))) {
+                if (inAlt) {
+                    plantUML += 'else Альтернативный сценарий\n';
+                }
+            }
+            
             // Рефлексивный вызов
             if (fromLatin === toLatin) {
                 plantUML += `activate ${fromLatin}\n`;
@@ -209,6 +270,9 @@ function generatePlantUML(diagramData, originalText) {
                 if (analysis.hasQueue) {
                     plantUML += '  • Отправка в очередь\n';
                 }
+                if (analysis.hasError) {
+                    plantUML += '  • Обработка ошибок\n';
+                }
                 
                 plantUML += 'end note\n';
                 plantUML += `${fromLatin} --> ${fromLatin} : готово\n`;
@@ -216,7 +280,8 @@ function generatePlantUML(diagramData, originalText) {
             }
             // Ответ
             else if (lowerLabel.includes('ответ') || lowerLabel.includes('подтвержд') ||
-                     lowerLabel.includes('success') || lowerLabel.includes('confirm')) {
+                     lowerLabel.includes('success') || lowerLabel.includes('confirm') ||
+                     lowerLabel.includes('возвращает')) {
                 plantUML += `${fromLatin} --> ${toLatin} : ${label}\n`;
             }
             // Запрос
@@ -230,6 +295,14 @@ function generatePlantUML(diagramData, originalText) {
                 plantUML += '  <b>Очередь сообщений:</b>\n';
                 plantUML += '  • Сообщение отправлено\n';
                 plantUML += '  • Ожидание обработки\n';
+                plantUML += 'end note\n';
+            }
+            
+            if (analysis.hasError && (lowerLabel.includes('ошибк') || lowerLabel.includes('error'))) {
+                plantUML += `note right of ${fromLatin}\n`;
+                plantUML += '  <b>Обработка ошибки:</b>\n';
+                plantUML += '  • Повторная попытка\n';
+                plantUML += '  • Логирование\n';
                 plantUML += 'end note\n';
             }
         }
