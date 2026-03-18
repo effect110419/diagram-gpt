@@ -50,28 +50,16 @@ function convertToPlantUML(diagramData) {
 }
 
 function encodePlantUML(text) {
-    // 1. UTF-8
     const utf8 = unescape(encodeURIComponent(text));
     
-    // 2. HUFFMAN сжатие (strategy: 3)
+    // HUFFMAN сжатие
     const compressed = pako.deflateRaw(utf8, { 
         level: 9,
-        windowBits: 15,
-        memLevel: 9,
-        strategy: 3
+        strategy: 2  // HUFFMAN ONLY
     });
     
-    // 3. Конвертация в base64
     let base64 = btoa(String.fromCharCode.apply(null, new Uint8Array(compressed)));
-    
-    // 4. ЗАМЕНА СИМВОЛОВ
-    base64 = base64.replace(/\+/g, '-').replace(/\//g, '_');
-    
-    // 5. Удаление padding
-    base64 = base64.replace(/=+$/, '');
-    
-    // 6. Удаляем первый символ если это слэш
-    if (base64.startsWith('/')) base64 = base64.substring(1);
+    base64 = base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
     
     return base64;
 }
@@ -83,19 +71,17 @@ async function renderDiagram(plantUML) {
     if (!container || !img) return;
     
     const encoded = encodePlantUML(plantUML);
-    
-    // URL с ~1 (как просит сервер)
     const url = `https://www.plantuml.com/plantuml/png/~1${encoded}`;
     
     console.log('URL:', url);
-    console.log('Длина URL:', url.length);
+    console.log('Длина:', url.length);
     
     img.src = url;
     window.currentDiagramUrl = url;
     
     return new Promise((resolve, reject) => {
         img.onload = () => {
-            console.log('✅ Диаграмма загружена! Ширина:', img.width);
+            console.log('✅ Загружено! Ширина:', img.width);
             if (window.pz) window.pz.dispose();
             if (typeof panzoom !== 'undefined') {
                 window.pz = panzoom(img, {
@@ -107,11 +93,7 @@ async function renderDiagram(plantUML) {
             }
             resolve();
         };
-        
-        img.onerror = (e) => {
-            console.error('❌ Ошибка загрузки:', e);
-            reject(new Error('Не удалось загрузить диаграмму'));
-        };
+        img.onerror = reject;
     });
 }
 
@@ -120,36 +102,25 @@ function downloadPNG() {
     const link = document.createElement('a');
     link.href = window.currentDiagramUrl;
     link.download = 'uml-diagram.png';
-    document.body.appendChild(link);
     link.click();
-    document.body.removeChild(link);
 }
 
 function switchTab(tabId) {
-    document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
-    document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-    
-    const activeTab = document.querySelector(`.tab[data-tab="${tabId}"]`);
-    if (activeTab) activeTab.classList.add('active');
-    
-    const activeContent = document.getElementById(tabId);
-    if (activeContent) activeContent.classList.add('active');
+    document.querySelectorAll('.tab, .tab-content').forEach(el => el.classList.remove('active'));
+    document.querySelector(`.tab[data-tab="${tabId}"]`)?.classList.add('active');
+    document.getElementById(tabId)?.classList.add('active');
 }
 
 function copyCode() {
     const code = document.getElementById('plantUMLCode');
     if (!code) return;
-    
     navigator.clipboard.writeText(code.textContent).then(() => {
         const btn = document.querySelector('.copy-btn');
         if (btn) {
-            const originalText = btn.innerHTML;
             btn.innerHTML = '<i class="fas fa-check"></i> Скопировано!';
-            setTimeout(() => {
-                btn.innerHTML = originalText;
-            }, 2000);
+            setTimeout(() => btn.innerHTML = '<i class="fas fa-copy"></i> Копировать', 2000);
         }
-    }).catch(() => alert('Не удалось скопировать'));
+    });
 }
 
 const API_URL = 'https://diagram-gpt-lypo.onrender.com';
@@ -163,12 +134,7 @@ document.getElementById('generateBtn').addEventListener('click', async function(
         return;
     }
     
-    resultDiv.innerHTML = `
-        <div class="loading">
-            <i class="fas fa-spinner"></i>
-            <span>Нейросеть создаёт диаграмму...</span>
-        </div>
-    `;
+    resultDiv.innerHTML = `<div class="loading"><i class="fas fa-spinner"></i> Нейросеть создаёт диаграмму...</div>`;
     
     try {
         const response = await fetch(`${API_URL}/process-text`, {
@@ -211,26 +177,19 @@ document.getElementById('generateBtn').addEventListener('click', async function(
                             <button onclick="if(window.pz) window.pz.zoomIn()"><i class="fas fa-search-plus"></i></button>
                             <button onclick="if(window.pz) window.pz.zoomOut()"><i class="fas fa-search-minus"></i></button>
                             <button onclick="if(window.pz) window.pz.reset()"><i class="fas fa-redo"></i></button>
-                            <button onclick="if(window.pz) window.pz.pause()"><i class="fas fa-hand-paper"></i></button>
-                            <button onclick="downloadPNG()" class="download-btn">
-                                <i class="fas fa-download"></i> PNG
-                            </button>
+                            <button onclick="downloadPNG()" class="download-btn"><i class="fas fa-download"></i> PNG</button>
                         </div>
                         <div id="diagramContainer">
-                            <img id="diagramImage" style="display: block; width: 100%; height: auto; cursor: grab;">
+                            <img id="diagramImage" style="width:100%; height:auto; cursor:grab;">
                         </div>
                     </div>
                 </div>
             `;
             
             await renderDiagram(plantUML);
-            
-        } else {
-            resultDiv.innerHTML = `<div class="error"><i class="fas fa-exclamation-triangle"></i> ${data.error || 'Ошибка генерации'}</div>`;
         }
     } catch (error) {
-        console.error('Generation error:', error);
-        resultDiv.innerHTML = `<div class="error"><i class="fas fa-exclamation-triangle"></i> Ошибка: ${error.message}</div>`;
+        resultDiv.innerHTML = `<div class="error"><i class="fas fa-exclamation-triangle"></i> ${error.message}</div>`;
     }
 });
 
