@@ -18,162 +18,227 @@ function toggleTheme() {
     }
 }
 
-function analyzeScenario(text) {
-    // Анализируем текст на наличие альтернативных сценариев
-    const hasAlternative = text.toLowerCase().includes('если нет') || 
-                          text.toLowerCase().includes('иначе') ||
-                          text.toLowerCase().includes('else') ||
-                          text.toLowerCase().includes('в противном случае');
-    
-    const hasParallel = text.toLowerCase().includes('одновременно') ||
-                       text.toLowerCase().includes('parallel') ||
-                       text.toLowerCase().includes('в то же время');
-    
-    const hasLoop = text.toLowerCase().includes('повтор') ||
-                   text.toLowerCase().includes('цикл') ||
-                   text.toLowerCase().includes('пока');
-    
-    return { hasAlternative, hasParallel, hasLoop };
+// Функция для безопасного имени участника
+function safeParticipantName(name) {
+    return name.replace(/[^a-zA-Z0-9]/g, '');
 }
 
-function generateParticipants(diagramData) {
-    const actors = new Set();
+// Анализ текста на наличие различных конструкций
+function analyzeText(text) {
+    const lowerText = text.toLowerCase();
     
-    // Собираем всех участников из данных
-    diagramData.nodes.forEach(node => {
-        if (node.actor) actors.add(node.actor);
-        if (node.type === 'actor') actors.add(node.label);
-        if (node.type === 'component' || node.type === 'participant') actors.add(node.label);
-        if (node.from) actors.add(node.from);
-        if (node.to) actors.add(node.to);
-    });
-    
-    // Добавляем участников из edges
-    diagramData.edges.forEach(edge => {
-        if (edge.from) actors.add(edge.from);
-        if (edge.to) actors.add(edge.to);
-    });
-    
-    return Array.from(actors);
+    return {
+        // Условные конструкции
+        hasIf: lowerText.includes('если') || lowerText.includes('if '),
+        hasElse: lowerText.includes('иначе') || lowerText.includes('else'),
+        hasWhen: lowerText.includes('когда') || lowerText.includes('when'),
+        
+        // Циклы
+        hasLoop: lowerText.includes('цикл') || lowerText.includes('loop') || 
+                lowerText.includes('повтор') || lowerText.includes('repeat'),
+        hasWhile: lowerText.includes('пока') || lowerText.includes('while'),
+        hasFor: lowerText.includes('для каждого') || lowerText.includes('for each'),
+        
+        // Параллельность
+        hasParallel: lowerText.includes('одновременно') || lowerText.includes('parallel') ||
+                    lowerText.includes('в то же время') || lowerText.includes('concurrently'),
+        
+        // Асинхронность
+        hasAsync: lowerText.includes('асинхронно') || lowerText.includes('async') ||
+                 lowerText.includes('отправляет') || lowerText.includes('send'),
+        
+        // Очереди/брокеры
+        hasQueue: lowerText.includes('кафка') || lowerText.includes('kafka') ||
+                 lowerText.includes('rabbit') || lowerText.includes('queue') ||
+                 lowerText.includes('очередь'),
+        
+        // Обработка ошибок
+        hasError: lowerText.includes('ошибк') || lowerText.includes('error') ||
+                 lowerText.includes('исключен') || lowerText.includes('exception'),
+        
+        // Таймауты/задержки
+        hasTimeout: lowerText.includes('таймаут') || lowerText.includes('timeout') ||
+                   lowerText.includes('задержк') || lowerText.includes('delay')
+    };
 }
 
-function generatePlantUMLCode(diagramData, originalText) {
-    const { hasAlternative, hasParallel, hasLoop } = analyzeScenario(originalText);
-    const participants = generateParticipants(diagramData);
-    
+function generatePlantUML(diagramData, originalText) {
+    const analysis = analyzeText(originalText);
     let plantUML = '@startuml\n\n';
     
-    // Глобальные настройки
+    // Базовые настройки
     plantUML += '!theme plain\n';
     plantUML += 'skinparam defaultTextAlignment center\n';
     plantUML += 'skinparam sequenceArrowThickness 2\n';
     plantUML += 'skinparam roundcorner 10\n';
-    plantUML += 'skinparam sequenceParticipantPadding 25\n';
+    plantUML += 'skinparam sequenceParticipantPadding 20\n';
     plantUML += 'skinparam sequenceMessageAlign center\n\n';
     
-    // Цветовые темы для разных типов блоков
+    // Цветовое кодирование для разных типов блоков
     plantUML += 'skinparam sequenceGroupBackgroundColor #FFF2CC\n';
     plantUML += 'skinparam sequenceAltBackgroundColor #FCE4D6\n';
     plantUML += 'skinparam sequenceLoopBackgroundColor #E2F0D9\n';
     plantUML += 'skinparam sequenceParBackgroundColor #E0F2F1\n';
+    plantUML += 'skinparam sequenceRefBackgroundColor #E8EAF6\n';
     plantUML += 'skinparam noteBackgroundColor #FEF9E7\n';
     plantUML += 'skinparam noteBorderColor #D4B45A\n\n';
     
-    // Определяем участников с цветами
-    const colors = ['#E1F5FE', '#F3E5F5', '#E8F5E8', '#FFF3E0', '#FCE4EC', '#E0F2F1', '#F1F8E9', '#FFF8E1'];
+    // Собираем всех участников
+    const participants = new Set();
     
-    participants.forEach((participant, index) => {
-        const participantId = participant.replace(/\s+/g, '');
+    diagramData.nodes?.forEach(node => {
+        if (node.actor) participants.add(node.actor);
+        if (node.label) participants.add(node.label);
+        if (node.from) participants.add(node.from);
+        if (node.to) participants.add(node.to);
+    });
+    
+    diagramData.edges?.forEach(edge => {
+        if (edge.from) participants.add(edge.from);
+        if (edge.to) participants.add(edge.to);
+    });
+    
+    // Добавляем участников
+    const colors = ['#E1F5FE', '#F3E5F5', '#E8F5E8', '#FFF3E0', '#FCE4EC', 
+                    '#E0F2F1', '#F1F8E9', '#FFF8E1', '#F3E5F5', '#E1F5FE'];
+    
+    Array.from(participants).forEach((participant, index) => {
+        const safeName = safeParticipantName(participant);
         const color = colors[index % colors.length];
-        plantUML += `participant "${participant}" as ${participantId} order ${index + 1} #${color}\n`;
+        plantUML += `participant "${participant}" as ${safeName} order ${index + 1}\n`;
     });
     
     plantUML += '\n';
     
-    // Группируем сообщения по логике
-    const mainFlow = [];
-    const altFlow = [];
-    let isAltSection = false;
+    // Генерация потока сообщений
+    let blockLevel = 0;
+    let inAlt = false;
+    let inLoop = false;
+    let inPar = false;
     
-    diagramData.edges.forEach(edge => {
-        const from = edge.from.replace(/\s+/g, '');
-        const to = edge.to.replace(/\s+/g, '');
-        const label = edge.label || 'действие';
-        const isResponse = edge.type === 'response' || 
-                          label.toLowerCase().includes('ответ') ||
-                          label.toLowerCase().includes('возвращает') ||
-                          label.toLowerCase().includes('подтверждает');
-        
-        const isSelfCall = from === to;
-        const arrowType = isResponse ? '-->' : '->';
-        
-        // Определяем альтернативные сценарии
-        if (label.toLowerCase().includes('если нет') || 
-            label.toLowerCase().includes('иначе') ||
-            label.toLowerCase().includes('else')) {
-            isAltSection = true;
-            return;
-        }
-        
-        if (isAltSection) {
-            altFlow.push({ from, to, label, arrowType, isSelfCall });
-        } else {
-            mainFlow.push({ from, to, label, arrowType, isSelfCall });
-        }
-    });
-    
-    // Рисуем основной поток
-    if (hasAlternative && altFlow.length > 0) {
-        plantUML += 'alt Успешный сценарий\n';
-    }
-    
-    mainFlow.forEach(msg => {
-        if (msg.isSelfCall) {
-            plantUML += `${msg.from} -> ${msg.to} : **${msg.label}**\n`;
-            plantUML += `activate ${msg.from}\n`;
-            plantUML += `note right: внутренняя обработка\n`;
-            plantUML += `${msg.from} --> ${msg.to} : **готово**\n`;
-            plantUML += `deactivate ${msg.from}\n`;
-        } else if (msg.arrowType === '-->') {
-            plantUML += `${msg.from} --> ${msg.to} : ${msg.label}\n`;
-        } else {
-            plantUML += `${msg.from} -> ${msg.to} : ${msg.label}\n`;
-        }
-    });
-    
-    // Альтернативный сценарий
-    if (hasAlternative && altFlow.length > 0) {
-        plantUML += 'else Товар отсутствует\n';
-        altFlow.forEach(msg => {
-            if (msg.isSelfCall) {
-                plantUML += `${msg.from} -> ${msg.to} : **${msg.label}**\n`;
-                plantUML += `activate ${msg.from}\n`;
-                plantUML += `note right: проверка альтернативы\n`;
-                plantUML += `${msg.from} --> ${msg.to} : **результат**\n`;
-                plantUML += `deactivate ${msg.from}\n`;
-            } else if (msg.arrowType === '-->') {
-                plantUML += `${msg.from} --> ${msg.to} : ${msg.label}\n`;
-            } else {
-                plantUML += `${msg.from} -> ${msg.to} : ${msg.label}\n`;
+    if (diagramData.edges) {
+        for (let i = 0; i < diagramData.edges.length; i++) {
+            const edge = diagramData.edges[i];
+            const from = safeParticipantName(edge.from);
+            const to = safeParticipantName(edge.to);
+            let label = edge.label || 'request';
+            const lowerLabel = label.toLowerCase();
+            
+            // Проверка на начало альтернативного блока
+            if (analysis.hasIf && (lowerLabel.includes('если') || lowerLabel.includes('if'))) {
+                if (!inAlt) {
+                    plantUML += 'alt Успешный сценарий\n';
+                    inAlt = true;
+                    blockLevel++;
+                }
             }
-        });
-        plantUML += 'end\n';
+            
+            // Проверка на начало цикла
+            if (analysis.hasLoop && (lowerLabel.includes('цикл') || lowerLabel.includes('loop'))) {
+                if (!inLoop) {
+                    plantUML += 'loop Повторение\n';
+                    inLoop = true;
+                    blockLevel++;
+                }
+            }
+            
+            // Проверка на параллельные процессы
+            if (analysis.hasParallel && (lowerLabel.includes('одновременно') || lowerLabel.includes('parallel'))) {
+                if (!inPar) {
+                    plantUML += 'par Параллельно\n';
+                    inPar = true;
+                    blockLevel++;
+                }
+            }
+            
+            // Обработка альтернативных веток
+            if (analysis.hasElse && (lowerLabel.includes('иначе') || lowerLabel.includes('else'))) {
+                if (inAlt) {
+                    plantUML += 'else Альтернативный сценарий\n';
+                }
+            }
+            
+            // Рефлексивный вызов (сам в себя)
+            if (from === to) {
+                plantUML += `activate ${from}\n`;
+                plantUML += `${from} -> ${from} : ${label}\n`;
+                plantUML += `note right\n  <b>Processing:</b>\n  • ${label}\n`;
+                
+                // Добавляем детали в зависимости от типа
+                if (analysis.hasQueue && lowerLabel.includes('очередь')) {
+                    plantUML += '  • Message queued\n  • Waiting for consumer\n';
+                }
+                if (analysis.hasAsync) {
+                    plantUML += '  • Async operation\n  • Callback registered\n';
+                }
+                if (analysis.hasTimeout) {
+                    plantUML += '  • Timeout set\n  • Awaiting response\n';
+                }
+                
+                plantUML += 'end note\n';
+                plantUML += `${from} --> ${from} : completed\n`;
+                plantUML += `deactivate ${from}\n`;
+            }
+            // Ответ (пунктирная стрелка)
+            else if (lowerLabel.includes('ответ') || lowerLabel.includes('response') ||
+                     lowerLabel.includes('confirm') || lowerLabel.includes('подтвержд')) {
+                plantUML += `${from} --> ${to} : ${label}\n`;
+            }
+            // Запрос (сплошная стрелка)
+            else {
+                plantUML += `${from} -> ${to} : ${label}\n`;
+            }
+            
+            // Добавляем заметки для сложных моментов
+            if (analysis.hasQueue && lowerLabel.includes('кафка')) {
+                plantUML += `note right of ${to}\n`;
+                plantUML += '  <b>Kafka:</b>\n';
+                plantUML += '  • Topic: events\n';
+                plantUML += '  • Partition: 0\n';
+                plantUML += '  • Offset: auto\n';
+                plantUML += 'end note\n';
+            }
+            
+            if (analysis.hasError && (lowerLabel.includes('ошибк') || lowerLabel.includes('fail'))) {
+                plantUML += `note right of ${from}\n`;
+                plantUML += '  <b>Error handling:</b>\n';
+                plantUML += '  • Retry policy\n';
+                plantUML += '  • Fallback\n';
+                plantUML += '  • Logging\n';
+                plantUML += 'end note\n';
+            }
+        }
     }
     
-    // Добавляем примечания для сложных моментов
-    plantUML += '\nnote right of Склад\n';
-    plantUML += '  <b>Проверка наличия:</b>\n';
-    plantUML += '  • Запрос в систему\n';
-    plantUML += '  • Проверка остатков\n';
-    plantUML += '  • Резервирование\n';
-    plantUML += 'end note\n';
+    // Закрываем все открытые блоки
+    while (blockLevel > 0) {
+        plantUML += 'end\n';
+        blockLevel--;
+    }
     
     plantUML += '@enduml';
-    
     return plantUML;
 }
 
-async function generateDiagram() {
+function copyCode() {
+    const code = document.getElementById('plantUMLCode');
+    if (!code) return;
+    
+    navigator.clipboard.writeText(code.textContent).then(() => {
+        const btn = document.querySelector('.copy-btn');
+        if (btn) {
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-check"></i> Скопировано!';
+            setTimeout(() => {
+                btn.innerHTML = originalText;
+            }, 2000);
+        }
+    });
+}
+
+const API_URL = 'https://diagram-gpt-lypo.onrender.com';
+
+document.getElementById('generateBtn').addEventListener('click', async function() {
     const text = document.getElementById('textInput').value;
     const resultDiv = document.getElementById('result');
     
@@ -185,25 +250,24 @@ async function generateDiagram() {
     resultDiv.innerHTML = `
         <div class="loading">
             <i class="fas fa-spinner"></i>
-            <span>Нейросеть анализирует сценарий...</span>
+            <span>Анализирую сценарий и генерирую диаграмму...</span>
         </div>
     `;
     
     try {
-        const response = await fetch('https://diagram-gpt-lypo.onrender.com/process-text', {
+        const response = await fetch(`${API_URL}/process-text`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
                 text: text,
-                diagram_type: 'uml',
-                enhanced: true
+                diagram_type: 'uml'
             })
         });
         
         const data = await response.json();
         
         if (data.success) {
-            const plantUML = generatePlantUMLCode(data.diagram, text);
+            const plantUML = generatePlantUML(data.diagram, text);
             const escapedPlantUML = plantUML
                 .replace(/</g, '&lt;')
                 .replace(/>/g, '&gt;');
@@ -225,25 +289,8 @@ async function generateDiagram() {
     } catch (error) {
         resultDiv.innerHTML = `<div class="error"><i class="fas fa-exclamation-triangle"></i> Ошибка: ${error.message}</div>`;
     }
-}
+});
 
-function copyCode() {
-    const code = document.getElementById('plantUMLCode');
-    if (!code) return;
-    
-    navigator.clipboard.writeText(code.textContent).then(() => {
-        const btn = document.querySelector('.copy-btn');
-        if (btn) {
-            const originalText = btn.innerHTML;
-            btn.innerHTML = '<i class="fas fa-check"></i> Скопировано!';
-            setTimeout(() => {
-                btn.innerHTML = originalText;
-            }, 2000);
-        }
-    });
-}
-
-document.getElementById('generateBtn').addEventListener('click', generateDiagram);
 window.copyCode = copyCode;
 window.toggleTheme = toggleTheme;
 window.autoResize = autoResize;
