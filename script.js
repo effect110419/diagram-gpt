@@ -1,16 +1,13 @@
-// Функция для авто-расширения textarea
 function autoResize(textarea) {
     textarea.style.height = 'auto';
     textarea.style.height = (textarea.scrollHeight) + 'px';
 }
 
-// Применить авто-расширение при загрузке
 document.addEventListener('DOMContentLoaded', function() {
     const textarea = document.getElementById('textInput');
     autoResize(textarea);
 });
 
-// Тёмная тема
 function toggleTheme() {
     document.body.classList.toggle('dark');
     const icon = document.querySelector('.theme-toggle i');
@@ -21,7 +18,6 @@ function toggleTheme() {
     }
 }
 
-// Функция для конвертации ответа AI в PlantUML
 function convertToPlantUML(diagramData) {
     let plantUML = '@startuml\n';
     plantUML += 'skinparam sequenceArrowThickness 2\n';
@@ -29,14 +25,12 @@ function convertToPlantUML(diagramData) {
     plantUML += 'skinparam sequenceParticipantPadding 20\n';
     plantUML += 'skinparam sequenceMessageAlign center\n\n';
     
-    // Собираем всех участников
     const actors = new Set();
     diagramData.nodes.forEach(node => {
         if (node.actor) actors.add(node.actor);
         if (node.type === 'actor') actors.add(node.label);
     });
     
-    // Добавляем участников
     actors.forEach(actor => {
         const actorId = actor.replace(/\s+/g, '');
         plantUML += `actor "${actor}" as ${actorId}\n`;
@@ -44,7 +38,6 @@ function convertToPlantUML(diagramData) {
     
     plantUML += '\n';
     
-    // Добавляем сообщения
     diagramData.edges.forEach(edge => {
         const from = edge.from.replace(/\s+/g, '');
         const to = edge.to.replace(/\s+/g, '');
@@ -56,76 +49,90 @@ function convertToPlantUML(diagramData) {
     return plantUML;
 }
 
-// Функция для кодирования в PlantUML формат
+// АКТУАЛЬНАЯ КОДИРОВКА ДЛЯ PLANTUML
 function encodePlantUML(text) {
-    // 1. Сначала кодируем в UTF-8
+    // 1. Кодируем в UTF-8
     const utf8 = unescape(encodeURIComponent(text));
     
-    // 2. Сжимаем deflate
-    const compressed = pako.deflateRaw(utf8, { level: 9 });
+    // 2. Сжимаем deflate с правильными параметрами
+    const compressed = pako.deflateRaw(utf8, { 
+        level: 9,
+        windowBits: 15,
+        memLevel: 9,
+        strategy: 0
+    });
     
     // 3. Конвертируем в base64
-    const base64 = btoa(String.fromCharCode.apply(null, compressed));
+    let binary = '';
+    const bytes = new Uint8Array(compressed);
+    for (let i = 0; i < bytes.byteLength; i++) {
+        binary += String.fromCharCode(bytes[i]);
+    }
+    let base64 = btoa(binary);
     
     // 4. Заменяем символы для PlantUML
-    return base64
-        .replace(/\+/g, '-')
-        .replace(/\//g, '_')
-        .replace(/=/g, '');
+    base64 = base64.replace(/\+/g, '-').replace(/\//g, '_');
+    
+    return base64;
 }
 
-// Функция для рендеринга диаграммы через PlantUML сервер
 async function renderDiagram(plantUML) {
     const container = document.getElementById('diagramContainer');
     const img = document.getElementById('diagramImage');
     
     if (!container || !img) return;
     
-    // Кодируем
     const encoded = encodePlantUML(plantUML);
     
-    // URL для PlantUML сервера
-    const pngUrl = `https://www.plantuml.com/plantuml/png/~1${encoded}`;
+    // ПРОБУЕМ ОБА ВАРИАНТА URL
+    const urlWithoutTilde = `https://www.plantuml.com/plantuml/png/${encoded}`;
+    const urlWithTilde = `https://www.plantuml.com/plantuml/png/~1${encoded}`;
     
-    console.log('PlantUML URL:', pngUrl);
+    console.log('Пробуем без ~1:', urlWithoutTilde);
     
-    // Загружаем PNG
-    img.src = pngUrl;
-    
-    // Сохраняем URL для скачивания
-    window.currentDiagramUrl = pngUrl;
+    img.src = urlWithoutTilde;
+    window.currentDiagramUrl = urlWithoutTilde;
     
     return new Promise((resolve, reject) => {
         img.onload = () => {
-            // Удаляем старый panzoom
-            if (window.pz) {
-                window.pz.dispose();
-            }
-            
-            // Инициализируем panzoom
-            if (typeof panzoom !== 'undefined') {
-                window.pz = panzoom(img, {
-                    maxZoom: 5,
-                    minZoom: 0.5,
-                    bounds: true,
-                    boundsPadding: 0.1
-                });
-            }
-            
+            console.log('✅ Работает без ~1');
+            initPanzoom(img);
             resolve();
         };
         
-        img.onerror = (e) => {
-            console.error('Image load error:', e);
-            reject(new Error('Не удалось загрузить диаграмму'));
+        img.onerror = () => {
+            console.log('❌ Не работает без ~1, пробуем с ~1:', urlWithTilde);
+            img.src = urlWithTilde;
+            window.currentDiagramUrl = urlWithTilde;
+            
+            img.onload = () => {
+                console.log('✅ Работает с ~1');
+                initPanzoom(img);
+                resolve();
+            };
+            
+            img.onerror = (e) => {
+                console.error('Оба варианта не работают', e);
+                reject(new Error('Не удалось загрузить диаграмму'));
+            };
         };
     });
 }
 
-// Функция для скачивания PNG
+function initPanzoom(img) {
+    if (window.pz) window.pz.dispose();
+    if (typeof panzoom !== 'undefined') {
+        window.pz = panzoom(img, {
+            maxZoom: 5,
+            minZoom: 0.5,
+            bounds: true,
+            boundsPadding: 0.1
+        });
+    }
+}
+
 function downloadPNG() {
     if (!window.currentDiagramUrl) return;
-    
     const link = document.createElement('a');
     link.href = window.currentDiagramUrl;
     link.download = 'uml-diagram.png';
@@ -134,14 +141,9 @@ function downloadPNG() {
     document.body.removeChild(link);
 }
 
-// Переключение вкладок
 function switchTab(tabId) {
-    document.querySelectorAll('.tab').forEach(tab => {
-        tab.classList.remove('active');
-    });
-    document.querySelectorAll('.tab-content').forEach(content => {
-        content.classList.remove('active');
-    });
+    document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
     
     const activeTab = document.querySelector(`.tab[data-tab="${tabId}"]`);
     if (activeTab) activeTab.classList.add('active');
@@ -150,7 +152,6 @@ function switchTab(tabId) {
     if (activeContent) activeContent.classList.add('active');
 }
 
-// Копирование кода
 function copyCode() {
     const code = document.getElementById('plantUMLCode');
     if (!code) return;
@@ -164,13 +165,9 @@ function copyCode() {
                 btn.innerHTML = originalText;
             }, 2000);
         }
-    }).catch(err => {
-        console.error('Copy failed:', err);
-        alert('Не удалось скопировать');
-    });
+    }).catch(() => alert('Не удалось скопировать'));
 }
 
-// URL бэкенда
 const API_URL = 'https://diagram-gpt-lypo.onrender.com';
 
 document.getElementById('generateBtn').addEventListener('click', async function() {
@@ -182,7 +179,6 @@ document.getElementById('generateBtn').addEventListener('click', async function(
         return;
     }
     
-    // Показываем загрузку
     resultDiv.innerHTML = `
         <div class="loading">
             <i class="fas fa-spinner"></i>
@@ -193,27 +189,16 @@ document.getElementById('generateBtn').addEventListener('click', async function(
     try {
         const response = await fetch(`${API_URL}/process-text`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ 
-                text: text,
-                diagram_type: 'uml'
-            })
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text, diagram_type: 'uml' })
         });
         
         const data = await response.json();
         
         if (data.success) {
-            // Конвертируем в PlantUML
             const plantUML = convertToPlantUML(data.diagram);
+            const escapedPlantUML = plantUML.replace(/</g, '&lt;').replace(/>/g, '&gt;');
             
-            // Экранируем для безопасного отображения в HTML
-            const escapedPlantUML = plantUML
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;');
-            
-            // Создаём структуру результата
             resultDiv.innerHTML = `
                 <div class="tabs">
                     <div class="tab active" data-tab="code" onclick="switchTab('code')">
@@ -254,7 +239,6 @@ document.getElementById('generateBtn').addEventListener('click', async function(
                 </div>
             `;
             
-            // Рендерим диаграмму
             await renderDiagram(plantUML);
             
         } else {
@@ -266,7 +250,6 @@ document.getElementById('generateBtn').addEventListener('click', async function(
     }
 });
 
-// Делаем функции глобальными
 window.switchTab = switchTab;
 window.copyCode = copyCode;
 window.downloadPNG = downloadPNG;
