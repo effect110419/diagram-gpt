@@ -49,33 +49,12 @@ function convertToPlantUML(diagramData) {
     return plantUML;
 }
 
-// ОКОНЧАТЕЛЬНАЯ РАБОЧАЯ ВЕРСИЯ КОДИРОВАНИЯ
 function encodePlantUML(text) {
-    // 1. UTF-8
     const utf8 = unescape(encodeURIComponent(text));
-    
-    // 2. Deflate с фиксированными параметрами
-    const compressed = pako.deflateRaw(utf8, { 
-        level: 9,
-        windowBits: 15,
-        memLevel: 9,
-        strategy: 0
-    });
-    
-    // 3. Конвертация в base64
+    const compressed = pako.deflateRaw(utf8, { level: 9 });
     let base64 = btoa(String.fromCharCode.apply(null, new Uint8Array(compressed)));
-    
-    // 4. ЗАМЕНА СИМВОЛОВ
-    base64 = base64.replace(/\+/g, '-').replace(/\//g, '_');
-    
-    // 5. Удаление padding
-    base64 = base64.replace(/=+$/, '');
-    
-    // 6. КРИТИЧЕСКИ ВАЖНО: удаляем первый символ если это слэш
-    if (base64.startsWith('/')) {
-        base64 = base64.substring(1);
-    }
-    
+    base64 = base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    if (base64.startsWith('/')) base64 = base64.substring(1);
     return base64;
 }
 
@@ -87,43 +66,49 @@ async function renderDiagram(plantUML) {
     
     const encoded = encodePlantUML(plantUML);
     
-    // ПРОБУЕМ ОБА ВАРИАНТА
-    const urls = [
-        `https://www.plantuml.com/plantuml/png/~1/${encoded}`,
-        `https://www.plantuml.com/plantuml/png/${encoded}`
+    const variants = [
+        { url: `https://www.plantuml.com/plantuml/png/${encoded}`, name: 'без ~1' },
+        { url: `https://www.plantuml.com/plantuml/png/~1/${encoded}`, name: 'с ~1/' },
+        { url: `https://www.plantuml.com/plantuml/svg/${encoded}`, name: 'svg' }
     ];
     
-    for (const url of urls) {
-        console.log('Пробуем URL:', url);
+    for (const variant of variants) {
+        console.log(`Пробуем ${variant.name}:`, variant.url);
         
         try {
-            await new Promise((resolve, reject) => {
-                img.src = url;
-                window.currentDiagramUrl = url;
-                
-                img.onload = resolve;
-                img.onerror = reject;
-            });
+            const response = await fetch(variant.url, { method: 'HEAD' });
+            const contentType = response.headers.get('content-type');
             
-            console.log('✅ Успех с URL:', url);
-            
-            if (window.pz) window.pz.dispose();
-            if (typeof panzoom !== 'undefined') {
-                window.pz = panzoom(img, {
-                    maxZoom: 5,
-                    minZoom: 0.5,
-                    bounds: true,
-                    boundsPadding: 0.1
+            if (contentType && contentType.includes('image/')) {
+                await new Promise((resolve, reject) => {
+                    img.src = variant.url;
+                    window.currentDiagramUrl = variant.url;
+                    
+                    img.onload = () => {
+                        console.log(`✅ Успех с ${variant.name}!`);
+                        if (window.pz) window.pz.dispose();
+                        if (typeof panzoom !== 'undefined') {
+                            window.pz = panzoom(img, {
+                                maxZoom: 5,
+                                minZoom: 0.5,
+                                bounds: true,
+                                boundsPadding: 0.1
+                            });
+                        }
+                        resolve();
+                    };
+                    
+                    img.onerror = reject;
                 });
+                
+                return;
             }
-            
-            return;
         } catch (e) {
-            console.log('❌ Не сработал URL:', url);
+            console.log(`❌ Ошибка с ${variant.name}:`, e);
         }
     }
     
-    throw new Error('Ни один URL не сработал');
+    throw new Error('Ни один вариант не сработал');
 }
 
 function downloadPNG() {
