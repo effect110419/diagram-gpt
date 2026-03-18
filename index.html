@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>UML Sequence Generator — PlantUML style</title>
+    <title>UML Sequence Generator — PlantUML</title>
     
     <!-- Шрифты и иконки -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/geist@1.2.0/dist/fonts.css">
@@ -25,7 +25,7 @@
         </div>
         
         <p class="description">
-            Опишите взаимодействие — нейросеть создаст UML Sequence диаграмму в стиле PlantUML
+            Опишите взаимодействие — нейросеть создаст профессиональный PlantUML код с alt, условиями и группировкой
         </p>
         
         <div class="textarea-wrapper">
@@ -44,18 +44,15 @@
         <!-- Результат -->
         <div id="result" class="result-container">
             <div class="placeholder">
-                <i class="fas fa-arrow-up"></i>
+                <i class="fas fa-code"></i>
                 <p>Введите текст и нажмите «Сгенерировать»</p>
+                <p style="font-size: 14px; margin-top: 8px;">Будет сгенерирован профессиональный PlantUML код с alt, opt, loop, group</p>
             </div>
         </div>
         
-        <small>⚡ Генерация UML Sequence · PlantUML совместимость · Экспорт PNG</small>
+        <small>⚡ Генерация PlantUML · Поддержка alt/else/loop/group · Копирование в буфер</small>
     </div>
 
-    <!-- Библиотеки -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/panzoom@9.4.3/dist/panzoom.min.js"></script>
-    
     <!-- Наш скрипт -->
     <script src="script.js"></script>
 </body>
