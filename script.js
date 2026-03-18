@@ -20,107 +20,109 @@ function toggleTheme() {
 
 function convertToPlantUML(diagramData) {
     let plantUML = '@startuml\n';
+    
+    // Стилизация
+    plantUML += '!theme plain\n';
     plantUML += 'skinparam sequenceArrowThickness 2\n';
     plantUML += 'skinparam roundcorner 10\n';
     plantUML += 'skinparam sequenceParticipantPadding 20\n';
-    plantUML += 'skinparam sequenceMessageAlign center\n\n';
+    plantUML += 'skinparam sequenceMessageAlign center\n';
+    plantUML += 'skinparam sequenceGroupBackgroundColor #FFF2CC\n';
+    plantUML += 'skinparam sequenceAltBackgroundColor #FCE4D6\n';
+    plantUML += 'skinparam sequenceLoopBackgroundColor #E2F0D9\n';
+    plantUML += 'skinparam noteBackgroundColor #FEF9E7\n';
+    plantUML += 'skinparam noteBorderColor #D4B45A\n\n';
     
+    // Собираем всех участников
     const actors = new Set();
     diagramData.nodes.forEach(node => {
         if (node.actor) actors.add(node.actor);
         if (node.type === 'actor') actors.add(node.label);
+        if (node.type === 'component' || node.type === 'participant') actors.add(node.label);
     });
     
-    actors.forEach(actor => {
+    // Если участников мало, добавляем стандартных
+    if (actors.size < 2) {
+        actors.add('Клиент');
+        actors.add('Система');
+    }
+    
+    // Добавляем участников с цветами
+    actors.forEach((actor, index) => {
         const actorId = actor.replace(/\s+/g, '');
-        plantUML += `actor "${actor}" as ${actorId}\n`;
+        const colors = ['#E1F5FE', '#F3E5F5', '#E8F5E8', '#FFF3E0', '#FCE4EC'];
+        const color = colors[index % colors.length];
+        plantUML += `participant "${actor}" as ${actorId} order ${index + 1} #${color}\n`;
     });
     
     plantUML += '\n';
     
-    diagramData.edges.forEach(edge => {
+    // Добавляем сообщения с поддержкой группировки и условий
+    let messageCount = 0;
+    let hasAlt = false;
+    let hasLoop = false;
+    
+    diagramData.edges.forEach((edge, index) => {
         const from = edge.from.replace(/\s+/g, '');
         const to = edge.to.replace(/\s+/g, '');
-        const label = edge.label || 'запрос';
+        let label = edge.label || 'запрос';
+        
+        // Проверяем, есть ли условия в тексте
+        const lowerLabel = label.toLowerCase();
+        
+        if (lowerLabel.includes('если') || lowerLabel.includes('if') || lowerLabel.includes('проверяет')) {
+            if (!hasAlt) {
+                plantUML += '\n';
+                plantUML += 'alt Успешный сценарий\n';
+                hasAlt = true;
+            }
+        }
+        
+        if (lowerLabel.includes('повтор') || lowerLabel.includes('цикл') || lowerLabel.includes('loop')) {
+            if (!hasLoop) {
+                plantUML += '\n';
+                plantUML += 'loop Пока условие выполняется\n';
+                hasLoop = true;
+            }
+        }
+        
+        // Проверяем на альтернативы (иначе/else)
+        if (lowerLabel.includes('иначе') || lowerLabel.includes('else') || lowerLabel.includes('если нет')) {
+            plantUML += 'else Альтернативный сценарий\n';
+        }
+        
+        // Добавляем сообщение
         plantUML += `${from} -> ${to} : ${label}\n`;
+        messageCount++;
+        
+        // Если много сообщений, добавляем разделитель
+        if (messageCount === 3 || messageCount === 7) {
+            plantUML += '...\n';
+        }
     });
+    
+    // Закрываем открытые блоки
+    if (hasAlt) plantUML += 'end\n';
+    if (hasLoop) plantUML += 'end\n';
     
     plantUML += '@enduml';
     return plantUML;
 }
 
-function encodePlantUML(text) {
-    const utf8 = unescape(encodeURIComponent(text));
-    
-    // HUFFMAN сжатие
-    const compressed = pako.deflateRaw(utf8, { 
-        level: 9,
-        strategy: 2  // HUFFMAN ONLY
-    });
-    
-    let base64 = btoa(String.fromCharCode.apply(null, new Uint8Array(compressed)));
-    base64 = base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-    
-    return base64;
-}
-
-async function renderDiagram(plantUML) {
-    const container = document.getElementById('diagramContainer');
-    const img = document.getElementById('diagramImage');
-    
-    if (!container || !img) return;
-    
-    const encoded = encodePlantUML(plantUML);
-    const url = `https://www.plantuml.com/plantuml/png/~1${encoded}`;
-    
-    console.log('URL:', url);
-    console.log('Длина:', url.length);
-    
-    img.src = url;
-    window.currentDiagramUrl = url;
-    
-    return new Promise((resolve, reject) => {
-        img.onload = () => {
-            console.log('✅ Загружено! Ширина:', img.width);
-            if (window.pz) window.pz.dispose();
-            if (typeof panzoom !== 'undefined') {
-                window.pz = panzoom(img, {
-                    maxZoom: 5,
-                    minZoom: 0.5,
-                    bounds: true,
-                    boundsPadding: 0.1
-                });
-            }
-            resolve();
-        };
-        img.onerror = reject;
-    });
-}
-
-function downloadPNG() {
-    if (!window.currentDiagramUrl) return;
-    const link = document.createElement('a');
-    link.href = window.currentDiagramUrl;
-    link.download = 'uml-diagram.png';
-    link.click();
-}
-
-function switchTab(tabId) {
-    document.querySelectorAll('.tab, .tab-content').forEach(el => el.classList.remove('active'));
-    document.querySelector(`.tab[data-tab="${tabId}"]`)?.classList.add('active');
-    document.getElementById(tabId)?.classList.add('active');
-}
-
 function copyCode() {
     const code = document.getElementById('plantUMLCode');
     if (!code) return;
+    
     navigator.clipboard.writeText(code.textContent).then(() => {
         const btn = document.querySelector('.copy-btn');
         if (btn) {
+            const originalText = btn.innerHTML;
             btn.innerHTML = '<i class="fas fa-check"></i> Скопировано!';
-            setTimeout(() => btn.innerHTML = '<i class="fas fa-copy"></i> Копировать', 2000);
+            setTimeout(() => {
+                btn.innerHTML = originalText;
+            }, 2000);
         }
-    });
+    }).catch(() => alert('Не удалось скопировать'));
 }
 
 const API_URL = 'https://diagram-gpt-lypo.onrender.com';
@@ -134,67 +136,55 @@ document.getElementById('generateBtn').addEventListener('click', async function(
         return;
     }
     
-    resultDiv.innerHTML = `<div class="loading"><i class="fas fa-spinner"></i> Нейросеть создаёт диаграмму...</div>`;
+    resultDiv.innerHTML = `
+        <div class="loading">
+            <i class="fas fa-spinner"></i>
+            <span>Нейросеть создаёт PlantUML код...</span>
+        </div>
+    `;
     
     try {
         const response = await fetch(`${API_URL}/process-text`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text, diagram_type: 'uml' })
+            body: JSON.stringify({ 
+                text: text, 
+                diagram_type: 'uml',
+                enhanced: true // Флаг для улучшенной генерации
+            })
         });
         
         const data = await response.json();
         
         if (data.success) {
+            // Если AI вернул структуру, конвертируем в PlantUML
             const plantUML = convertToPlantUML(data.diagram);
-            const escapedPlantUML = plantUML.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            
+            // Экранируем для безопасного отображения в HTML
+            const escapedPlantUML = plantUML
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;');
             
             resultDiv.innerHTML = `
-                <div class="tabs">
-                    <div class="tab active" data-tab="code" onclick="switchTab('code')">
-                        <i class="fas fa-code"></i> PlantUML код
+                <div class="code-panel">
+                    <div class="code-header">
+                        <span><i class="fas fa-code"></i> PlantUML код</span>
+                        <button class="copy-btn" onclick="copyCode()">
+                            <i class="fas fa-copy"></i> Копировать
+                        </button>
                     </div>
-                    <div class="tab" data-tab="diagram" onclick="switchTab('diagram')">
-                        <i class="fas fa-project-diagram"></i> Диаграмма
-                    </div>
-                </div>
-                
-                <div id="code" class="tab-content active">
-                    <div class="code-panel">
-                        <div class="code-header">
-                            <span><i class="fas fa-code"></i> PlantUML код</span>
-                            <button class="copy-btn" onclick="copyCode()">
-                                <i class="fas fa-copy"></i> Копировать
-                            </button>
-                        </div>
-                        <pre id="plantUMLCode">${escapedPlantUML}</pre>
-                    </div>
-                </div>
-                
-                <div id="diagram" class="tab-content">
-                    <div class="diagram-panel">
-                        <div class="diagram-controls">
-                            <button onclick="if(window.pz) window.pz.zoomIn()"><i class="fas fa-search-plus"></i></button>
-                            <button onclick="if(window.pz) window.pz.zoomOut()"><i class="fas fa-search-minus"></i></button>
-                            <button onclick="if(window.pz) window.pz.reset()"><i class="fas fa-redo"></i></button>
-                            <button onclick="downloadPNG()" class="download-btn"><i class="fas fa-download"></i> PNG</button>
-                        </div>
-                        <div id="diagramContainer">
-                            <img id="diagramImage" style="width:100%; height:auto; cursor:grab;">
-                        </div>
-                    </div>
+                    <pre id="plantUMLCode">${escapedPlantUML}</pre>
                 </div>
             `;
-            
-            await renderDiagram(plantUML);
+        } else {
+            resultDiv.innerHTML = `<div class="error"><i class="fas fa-exclamation-triangle"></i> ${data.error || 'Ошибка генерации'}</div>`;
         }
     } catch (error) {
-        resultDiv.innerHTML = `<div class="error"><i class="fas fa-exclamation-triangle"></i> ${error.message}</div>`;
+        console.error('Generation error:', error);
+        resultDiv.innerHTML = `<div class="error"><i class="fas fa-exclamation-triangle"></i> Ошибка: ${error.message}</div>`;
     }
 });
 
-window.switchTab = switchTab;
 window.copyCode = copyCode;
-window.downloadPNG = downloadPNG;
 window.toggleTheme = toggleTheme;
 window.autoResize = autoResize;
