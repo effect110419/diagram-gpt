@@ -49,12 +49,11 @@ function convertToPlantUML(diagramData) {
     return plantUML;
 }
 
-// АКТУАЛЬНАЯ КОДИРОВКА ДЛЯ PLANTUML
 function encodePlantUML(text) {
-    // 1. Кодируем в UTF-8
+    // 1. UTF-8
     const utf8 = unescape(encodeURIComponent(text));
     
-    // 2. Сжимаем deflate с правильными параметрами
+    // 2. Deflate с правильными параметрами
     const compressed = pako.deflateRaw(utf8, { 
         level: 9,
         windowBits: 15,
@@ -62,7 +61,7 @@ function encodePlantUML(text) {
         strategy: 0
     });
     
-    // 3. Конвертируем в base64
+    // 3. Base64
     let binary = '';
     const bytes = new Uint8Array(compressed);
     for (let i = 0; i < bytes.byteLength; i++) {
@@ -70,7 +69,7 @@ function encodePlantUML(text) {
     }
     let base64 = btoa(binary);
     
-    // 4. Заменяем символы для PlantUML
+    // 4. Замена символов
     base64 = base64.replace(/\+/g, '-').replace(/\//g, '_');
     
     return base64;
@@ -84,35 +83,35 @@ async function renderDiagram(plantUML) {
     
     const encoded = encodePlantUML(plantUML);
     
-    // ПРОБУЕМ ОБА ВАРИАНТА URL
-    const urlWithoutTilde = `https://www.plantuml.com/plantuml/png/${encoded}`;
+    // ПРОБУЕМ СНАЧАЛА С ~1
     const urlWithTilde = `https://www.plantuml.com/plantuml/png/~1${encoded}`;
+    const urlWithoutTilde = `https://www.plantuml.com/plantuml/png/${encoded}`;
     
-    console.log('Пробуем без ~1:', urlWithoutTilde);
+    console.log('🔍 Тестируем URL с ~1:', urlWithTilde);
     
-    img.src = urlWithoutTilde;
-    window.currentDiagramUrl = urlWithoutTilde;
+    img.src = urlWithTilde;
+    window.currentDiagramUrl = urlWithTilde;
     
     return new Promise((resolve, reject) => {
         img.onload = () => {
-            console.log('✅ Работает без ~1');
+            console.log('✅ Работает с ~1');
             initPanzoom(img);
             resolve();
         };
         
         img.onerror = () => {
-            console.log('❌ Не работает без ~1, пробуем с ~1:', urlWithTilde);
-            img.src = urlWithTilde;
-            window.currentDiagramUrl = urlWithTilde;
+            console.log('❌ С ~1 не работает, пробуем без ~1:', urlWithoutTilde);
+            img.src = urlWithoutTilde;
+            window.currentDiagramUrl = urlWithoutTilde;
             
             img.onload = () => {
-                console.log('✅ Работает с ~1');
+                console.log('✅ Работает без ~1');
                 initPanzoom(img);
                 resolve();
             };
             
             img.onerror = (e) => {
-                console.error('Оба варианта не работают', e);
+                console.error('❌ Оба варианта не работают', e);
                 reject(new Error('Не удалось загрузить диаграмму'));
             };
         };
