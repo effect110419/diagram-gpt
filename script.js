@@ -18,9 +18,92 @@ function toggleTheme() {
     }
 }
 
-// Функция для безопасного имени участника
-function safeParticipantName(name) {
-    return name.replace(/[^a-zA-Z0-9]/g, '');
+// Функция для безопасного имени участника (транслит для as)
+function transliterateToLatin(text) {
+    const map = {
+        'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'e',
+        'ж': 'zh', 'з': 'z', 'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm',
+        'н': 'n', 'о': 'o', 'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u',
+        'ф': 'f', 'х': 'kh', 'ц': 'ts', 'ч': 'ch', 'ш': 'sh', 'щ': 'sch',
+        'ъ': '', 'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya',
+        'А': 'A', 'Б': 'B', 'В': 'V', 'Г': 'G', 'Д': 'D', 'Е': 'E', 'Ё': 'E',
+        'Ж': 'Zh', 'З': 'Z', 'И': 'I', 'Й': 'Y', 'К': 'K', 'Л': 'L', 'М': 'M',
+        'Н': 'N', 'О': 'O', 'П': 'P', 'Р': 'R', 'С': 'S', 'Т': 'T', 'У': 'U',
+        'Ф': 'F', 'Х': 'Kh', 'Ц': 'Ts', 'Ч': 'Ch', 'Ш': 'Sh', 'Щ': 'Sch',
+        'Ъ': '', 'Ы': 'Y', 'Ь': '', 'Э': 'E', 'Ю': 'Yu', 'Я': 'Ya',
+        ' ': '', '-': '', '_': ''
+    };
+    
+    return text.split('').map(c => map[c] || c).join('');
+}
+
+// Перевод английских терминов на русский
+function translateToRussian(text) {
+    const translations = {
+        // Основные термины
+        'Client': 'Клиент',
+        'System': 'Система',
+        'Warehouse': 'Склад',
+        'Payment Gateway': 'Платежный шлюз',
+        'Bank': 'Банк',
+        'Email Service': 'Почтовый сервис',
+        'Email': 'Почта',
+        'Database': 'База данных',
+        'Server': 'Сервер',
+        'Frontend': 'Фронтенд',
+        'Backend': 'Бэкенд',
+        'API Gateway': 'API шлюз',
+        'Auth Service': 'Сервис авторизации',
+        'Queue': 'Очередь',
+        'Kafka': 'Кафка',
+        'RabbitMQ': 'Кролик',
+        'Redis': 'Редис',
+        'Cache': 'Кэш',
+        'Load Balancer': 'Балансировщик',
+        'CDN': 'CDN',
+        'DNS': 'DNS',
+        
+        // Действия
+        'Add to cart': 'Добавить в корзину',
+        'Check availability': 'Проверить наличие',
+        'Availability response': 'Ответ о наличии',
+        'Reserve item': 'Зарезервировать товар',
+        'Send payment request': 'Отправить запрос оплаты',
+        'Check card': 'Проверить карту',
+        'Payment confirmation': 'Подтверждение оплаты',
+        'Payment success': 'Оплата успешна',
+        'Send order confirmation': 'Отправить подтверждение заказа',
+        'Send confirmation email': 'Отправить письмо',
+        'Process payment': 'Обработать платеж',
+        'Verify card': 'Верифицировать карту',
+        'Confirm payment': 'Подтвердить оплату',
+        'Payment successful': 'Оплата успешна',
+        'Order confirmation': 'Подтверждение заказа',
+        
+        // HTTP методы
+        'GET request': 'GET запрос',
+        'POST request': 'POST запрос',
+        'PUT request': 'PUT запрос',
+        'DELETE request': 'DELETE запрос',
+        'PATCH request': 'PATCH запрос',
+        
+        // Ответы
+        '200 OK': '200 Успешно',
+        '201 Created': '201 Создано',
+        '400 Bad Request': '400 Неверный запрос',
+        '401 Unauthorized': '401 Не авторизован',
+        '403 Forbidden': '403 Доступ запрещен',
+        '404 Not Found': '404 Не найдено',
+        '500 Internal Error': '500 Ошибка сервера'
+    };
+    
+    // Проверяем точное совпадение
+    if (translations[text]) {
+        return translations[text];
+    }
+    
+    // Если нет в словаре, оставляем как есть
+    return text;
 }
 
 // Анализ текста на наличие различных конструкций
@@ -28,37 +111,13 @@ function analyzeText(text) {
     const lowerText = text.toLowerCase();
     
     return {
-        // Условные конструкции
         hasIf: lowerText.includes('если') || lowerText.includes('if '),
         hasElse: lowerText.includes('иначе') || lowerText.includes('else'),
-        hasWhen: lowerText.includes('когда') || lowerText.includes('when'),
-        
-        // Циклы
-        hasLoop: lowerText.includes('цикл') || lowerText.includes('loop') || 
-                lowerText.includes('повтор') || lowerText.includes('repeat'),
-        hasWhile: lowerText.includes('пока') || lowerText.includes('while'),
-        hasFor: lowerText.includes('для каждого') || lowerText.includes('for each'),
-        
-        // Параллельность
-        hasParallel: lowerText.includes('одновременно') || lowerText.includes('parallel') ||
-                    lowerText.includes('в то же время') || lowerText.includes('concurrently'),
-        
-        // Асинхронность
-        hasAsync: lowerText.includes('асинхронно') || lowerText.includes('async') ||
-                 lowerText.includes('отправляет') || lowerText.includes('send'),
-        
-        // Очереди/брокеры
+        hasLoop: lowerText.includes('цикл') || lowerText.includes('loop'),
+        hasParallel: lowerText.includes('одновременно') || lowerText.includes('parallel'),
         hasQueue: lowerText.includes('кафка') || lowerText.includes('kafka') ||
-                 lowerText.includes('rabbit') || lowerText.includes('queue') ||
-                 lowerText.includes('очередь'),
-        
-        // Обработка ошибок
-        hasError: lowerText.includes('ошибк') || lowerText.includes('error') ||
-                 lowerText.includes('исключен') || lowerText.includes('exception'),
-        
-        // Таймауты/задержки
-        hasTimeout: lowerText.includes('таймаут') || lowerText.includes('timeout') ||
-                   lowerText.includes('задержк') || lowerText.includes('delay')
+                 lowerText.includes('rabbit') || lowerText.includes('очередь'),
+        hasError: lowerText.includes('ошибк') || lowerText.includes('error')
     };
 }
 
@@ -74,23 +133,21 @@ function generatePlantUML(diagramData, originalText) {
     plantUML += 'skinparam sequenceParticipantPadding 20\n';
     plantUML += 'skinparam sequenceMessageAlign center\n\n';
     
-    // Цветовое кодирование для разных типов блоков
+    // Цветовое кодирование
     plantUML += 'skinparam sequenceGroupBackgroundColor #FFF2CC\n';
     plantUML += 'skinparam sequenceAltBackgroundColor #FCE4D6\n';
     plantUML += 'skinparam sequenceLoopBackgroundColor #E2F0D9\n';
     plantUML += 'skinparam sequenceParBackgroundColor #E0F2F1\n';
-    plantUML += 'skinparam sequenceRefBackgroundColor #E8EAF6\n';
     plantUML += 'skinparam noteBackgroundColor #FEF9E7\n';
     plantUML += 'skinparam noteBorderColor #D4B45A\n\n';
     
     // Собираем всех участников
     const participants = new Set();
     
+    // Сначала собираем оригинальные названия
     diagramData.nodes?.forEach(node => {
         if (node.actor) participants.add(node.actor);
-        if (node.label) participants.add(node.label);
-        if (node.from) participants.add(node.from);
-        if (node.to) participants.add(node.to);
+        if (node.label && !node.actor) participants.add(node.label);
     });
     
     diagramData.edges?.forEach(edge => {
@@ -98,14 +155,18 @@ function generatePlantUML(diagramData, originalText) {
         if (edge.to) participants.add(edge.to);
     });
     
-    // Добавляем участников
+    // Добавляем участников с русскими названиями
     const colors = ['#E1F5FE', '#F3E5F5', '#E8F5E8', '#FFF3E0', '#FCE4EC', 
                     '#E0F2F1', '#F1F8E9', '#FFF8E1', '#F3E5F5', '#E1F5FE'];
     
     Array.from(participants).forEach((participant, index) => {
-        const safeName = safeParticipantName(participant);
+        // Переводим название на русский для отображения
+        const russianName = translateToRussian(participant);
+        // Делаем транслит для идентификатора
+        const latinId = transliterateToLatin(russianName);
         const color = colors[index % colors.length];
-        plantUML += `participant "${participant}" as ${safeName} order ${index + 1}\n`;
+        
+        plantUML += `participant "${russianName}" as ${latinId} order ${index + 1}\n`;
     });
     
     plantUML += '\n';
@@ -113,19 +174,25 @@ function generatePlantUML(diagramData, originalText) {
     // Генерация потока сообщений
     let blockLevel = 0;
     let inAlt = false;
-    let inLoop = false;
-    let inPar = false;
     
     if (diagramData.edges) {
         for (let i = 0; i < diagramData.edges.length; i++) {
             const edge = diagramData.edges[i];
-            const from = safeParticipantName(edge.from);
-            const to = safeParticipantName(edge.to);
-            let label = edge.label || 'request';
+            
+            // Получаем русские названия для отображения
+            const fromRussian = translateToRussian(edge.from);
+            const toRussian = translateToRussian(edge.to);
+            
+            // Делаем транслит для идентификаторов
+            const fromLatin = transliterateToLatin(fromRussian);
+            const toLatin = transliterateToLatin(toRussian);
+            
+            // Переводим текст сообщения
+            let label = translateToRussian(edge.label || 'запрос');
             const lowerLabel = label.toLowerCase();
             
             // Проверка на начало альтернативного блока
-            if (analysis.hasIf && (lowerLabel.includes('если') || lowerLabel.includes('if'))) {
+            if (analysis.hasIf && (lowerLabel.includes('если') || lowerLabel.includes('провер'))) {
                 if (!inAlt) {
                     plantUML += 'alt Успешный сценарий\n';
                     inAlt = true;
@@ -133,84 +200,42 @@ function generatePlantUML(diagramData, originalText) {
                 }
             }
             
-            // Проверка на начало цикла
-            if (analysis.hasLoop && (lowerLabel.includes('цикл') || lowerLabel.includes('loop'))) {
-                if (!inLoop) {
-                    plantUML += 'loop Повторение\n';
-                    inLoop = true;
-                    blockLevel++;
-                }
-            }
-            
-            // Проверка на параллельные процессы
-            if (analysis.hasParallel && (lowerLabel.includes('одновременно') || lowerLabel.includes('parallel'))) {
-                if (!inPar) {
-                    plantUML += 'par Параллельно\n';
-                    inPar = true;
-                    blockLevel++;
-                }
-            }
-            
-            // Обработка альтернативных веток
-            if (analysis.hasElse && (lowerLabel.includes('иначе') || lowerLabel.includes('else'))) {
-                if (inAlt) {
-                    plantUML += 'else Альтернативный сценарий\n';
-                }
-            }
-            
-            // Рефлексивный вызов (сам в себя)
-            if (from === to) {
-                plantUML += `activate ${from}\n`;
-                plantUML += `${from} -> ${from} : ${label}\n`;
-                plantUML += `note right\n  <b>Processing:</b>\n  • ${label}\n`;
+            // Рефлексивный вызов
+            if (fromLatin === toLatin) {
+                plantUML += `activate ${fromLatin}\n`;
+                plantUML += `${fromLatin} -> ${fromLatin} : ${label}\n`;
+                plantUML += `note right\n  <b>Обработка:</b>\n  • ${label}\n`;
                 
-                // Добавляем детали в зависимости от типа
-                if (analysis.hasQueue && lowerLabel.includes('очередь')) {
-                    plantUML += '  • Message queued\n  • Waiting for consumer\n';
-                }
-                if (analysis.hasAsync) {
-                    plantUML += '  • Async operation\n  • Callback registered\n';
-                }
-                if (analysis.hasTimeout) {
-                    plantUML += '  • Timeout set\n  • Awaiting response\n';
+                if (analysis.hasQueue) {
+                    plantUML += '  • Отправка в очередь\n';
                 }
                 
                 plantUML += 'end note\n';
-                plantUML += `${from} --> ${from} : completed\n`;
-                plantUML += `deactivate ${from}\n`;
+                plantUML += `${fromLatin} --> ${fromLatin} : готово\n`;
+                plantUML += `deactivate ${fromLatin}\n`;
             }
-            // Ответ (пунктирная стрелка)
-            else if (lowerLabel.includes('ответ') || lowerLabel.includes('response') ||
-                     lowerLabel.includes('confirm') || lowerLabel.includes('подтвержд')) {
-                plantUML += `${from} --> ${to} : ${label}\n`;
+            // Ответ
+            else if (lowerLabel.includes('ответ') || lowerLabel.includes('подтвержд') ||
+                     lowerLabel.includes('success') || lowerLabel.includes('confirm')) {
+                plantUML += `${fromLatin} --> ${toLatin} : ${label}\n`;
             }
-            // Запрос (сплошная стрелка)
+            // Запрос
             else {
-                plantUML += `${from} -> ${to} : ${label}\n`;
+                plantUML += `${fromLatin} -> ${toLatin} : ${label}\n`;
             }
             
             // Добавляем заметки для сложных моментов
-            if (analysis.hasQueue && lowerLabel.includes('кафка')) {
-                plantUML += `note right of ${to}\n`;
-                plantUML += '  <b>Kafka:</b>\n';
-                plantUML += '  • Topic: events\n';
-                plantUML += '  • Partition: 0\n';
-                plantUML += '  • Offset: auto\n';
-                plantUML += 'end note\n';
-            }
-            
-            if (analysis.hasError && (lowerLabel.includes('ошибк') || lowerLabel.includes('fail'))) {
-                plantUML += `note right of ${from}\n`;
-                plantUML += '  <b>Error handling:</b>\n';
-                plantUML += '  • Retry policy\n';
-                plantUML += '  • Fallback\n';
-                plantUML += '  • Logging\n';
+            if (analysis.hasQueue && (lowerLabel.includes('кафка') || lowerLabel.includes('очередь'))) {
+                plantUML += `note right of ${toLatin}\n`;
+                plantUML += '  <b>Очередь сообщений:</b>\n';
+                plantUML += '  • Сообщение отправлено\n';
+                plantUML += '  • Ожидание обработки\n';
                 plantUML += 'end note\n';
             }
         }
     }
     
-    // Закрываем все открытые блоки
+    // Закрываем блоки
     while (blockLevel > 0) {
         plantUML += 'end\n';
         blockLevel--;
@@ -250,7 +275,7 @@ document.getElementById('generateBtn').addEventListener('click', async function(
     resultDiv.innerHTML = `
         <div class="loading">
             <i class="fas fa-spinner"></i>
-            <span>Анализирую сценарий и генерирую диаграмму...</span>
+            <span>Генерация диаграммы...</span>
         </div>
     `;
     
